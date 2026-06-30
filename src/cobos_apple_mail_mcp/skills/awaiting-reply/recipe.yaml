@@ -1,0 +1,14 @@
+name: awaiting-reply
+description: Find sent messages with no reply yet and draft follow-up suggestions.
+arguments:
+  - name: account
+    required: false
+    description: Restrict to one account (omit for all accounts).
+    default: "all accounts"
+  - name: days_back
+    required: false
+    description: How many days back to look for unanswered sent messages.
+    default: "14"
+uses_tools: [get_awaiting_reply, get_email_thread]
+uses_resources: [email://awaiting-reply]
+prompt_template: prompt.md

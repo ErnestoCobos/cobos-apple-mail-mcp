@@ -1,0 +1,90 @@
+---
+covers:
+  - tests/*.py
+  - .github/workflows/*.yml
+last_verified: 2026-06-30
+---
+
+# Development & contributing
+
+## Setup
+
+```bash
+uv venv && uv sync --all-extras       # or: pip install -e ".[dev,full]"
+uv run pytest                          # full suite — no Mac/Mail.app required
+uv run ruff check src tests
+```
+
+## Testing without a Mac
+
+~80% of this codebase (everything under `read/`, `knowledge/`, `core/`, `storage/`, `server.py`,
+`cli.py`) is plain Python + SQLite and tests fully on any platform with synthetic fixtures:
+
+- `tests/helpers.py::build_emlx_bytes()`/`write_message()` construct real `.emlx` byte streams
+  (byte-count header, RFC822 message, XML plist trailer) on disk in a temp directory — the
+  indexer, parser, threader, and triage heuristics all run against these for real, not mocked.
+- `tests/helpers.py::FakeJXAExecutor` is the documented mock boundary for the write layer:
+  programmed per JXA function name with a Python callable, records every call made. Used by
+  `tests/test_resolver.py` and `tests/test_write_layer.py` to verify the resolution algorithm,
+  `guard()`'s every safety check, and `undo_last()` — without touching Mail.app at all.
+- `tests/test_jxa_executor.py` is the one place that runs **real** `osascript` subprocesses —
+  deliberately scoped to scripts that never call `Application("Mail")`, so no Automation
+  permission is needed, while still genuinely exercising the timeout/process-group-kill
+  mechanics (not mocked).
+- `tests/test_vector_search.py` uses a deterministic `FakeEmbeddingBackend` (keyword-presence
+  vectors, no ML) against a **real** `sqlite-vec` extension (`pytest.importorskip("sqlite_vec")`
+  — skips gracefully if not installed; the `[dev]` extra includes it specifically so CI exercises
+  this path rather than always skipping).
+
+The only things this suite cannot verify without a real, fully-configured Mac: the actual
+`write/scripts/mail_core.js` JXA against a live Mail.app (compose/reply/forward/move/trash/
+drafts), and the Apple `NaturalLanguage`/Foundation Models integrations (PyObjC and Swift-helper
+runtime behavior — see [Search](Search.md) and the
+[`swift/foundation-models-summarizer/README.md`](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/blob/main/swift/foundation-models-summarizer/README.md)
+for what was verified by compiling vs. what needs manual verification).
+
+## Manual verification checklist (run this on your own Mac before relying on writes)
+
+1. `apple-mail-mcp index build --full` then `index status`.
+2. `apple-mail-mcp search "<term>" --highlight`, `get_email_thread`, `overview`,
+   `needs-response`.
+3. **Non-destructive first**: `apple-mail-mcp move <id> --to-mailbox Archive --dry-run`,
+   `apple-mail-mcp trash --action delete_permanent ... ` (defaults to `dry_run=true`).
+4. `apple-mail-mcp compose --account ... --to ... --subject test --body test --mode draft`.
+5. A single real `move`, then `apple-mail-mcp undo-last` to confirm the round-trip.
+6. `update_email_status` flag/unflag.
+7. Confirm `--read-only` blocks every write tool (should fail in milliseconds, never launching
+   Mail.app — see [Performance & benchmarks](Performance-and-benchmarks.md) for why this is
+   specifically checked).
+8. Register with an actual MCP client (see [Install per client](Install-per-client.md)) and run
+   `recipe run daily-triage`.
+
+## Docs-as-you-go (the "Definition of Done")
+
+Any change to a subsystem updates its mapped Wiki page in the **same commit** — see the
+knowledge map in
+[CLAUDE.md](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/blob/main/CLAUDE.md). Each Wiki
+page's front-matter (`covers:` source globs, `last_verified:` date) is checked by
+`scripts/check_docs_sync.py`, wired into pre-commit and CI — it warns (not a hard failure, to
+avoid false positives from unrelated changes) when a covered source file's mtime is newer than
+the page's recorded `last_verified` date.
+
+## CI
+
+GitHub Actions (`.github/workflows/ci.yml`) runs on macOS runners (this project's core logic and
+the documented test boundary both require macOS for the real-`osascript` and real-`sqlite-vec`
+tests to run, not just skip): `ruff check`, `pytest`, and `scripts/check_docs_sync.py`.
+
+## Release
+
+```bash
+make pyz                              # builds dist/apple-mail-mcp{,-full}.pyz
+scripts/publish_wiki.sh               # syncs docs/wiki/ -> the GitHub wiki repo
+```
+
+## Conventions
+
+Python 3.10+, type hints everywhere, pydantic models for all tool I/O. No comments explaining
+*what* code does — only the non-obvious *why* (a constraint, a workaround, an invariant). See
+[CLAUDE.md](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/blob/main/CLAUDE.md) for the
+full conventions list and the hard invariants every change must preserve.

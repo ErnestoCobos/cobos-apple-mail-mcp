@@ -1,0 +1,19 @@
+{
+  "name": "io.github.ErnestoCobos/cobos-apple-mail-mcp",
+  "description": "Unified Apple Mail MCP server: fast on-disk reads/search plus complete AppleScript writes, behind one safety layer.",
+  "version": "0.1.0",
+  "repository": {
+    "url": "https://github.com/ErnestoCobos/cobos-apple-mail-mcp",
+    "source": "github"
+  },
+  "license": "GPL-3.0-or-later",
+  "packages": [
+    {
+      "registry_type": "pypi",
+      "identifier": "cobos-apple-mail-mcp",
+      "version": "0.1.0",
+      "transport": { "type": "stdio" },
+      "runtime_arguments": [{ "value": "serve" }]
+    }
+  ]
+}

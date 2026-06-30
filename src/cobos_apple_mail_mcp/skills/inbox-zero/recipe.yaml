@@ -1,0 +1,10 @@
+name: inbox-zero
+description: Work through unread inbox messages toward zero, proposing archive/respond/defer for each.
+arguments:
+  - name: account
+    required: false
+    description: Restrict to one account (omit for all accounts).
+    default: "all accounts"
+uses_tools: [get_emails, get_needs_response, update_email_status, move_email]
+uses_resources: [email://inbox-summary, email://needs-response]
+prompt_template: prompt.md

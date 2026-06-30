@@ -1,0 +1,10 @@
+name: weekly-review
+description: Summarize the past week's email activity — volume, top senders, response health.
+arguments:
+  - name: account
+    required: false
+    description: Restrict to one account (omit for all accounts).
+    default: "all accounts"
+uses_tools: [get_statistics, get_top_senders, get_inbox_overview]
+uses_resources: [email://stats, email://inbox-summary]
+prompt_template: prompt.md

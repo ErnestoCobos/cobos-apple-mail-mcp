@@ -1,0 +1,88 @@
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cobos-apple-mail-mcp"
+version = "0.1.0"
+description = "Unified Apple Mail MCP server: fast on-disk reads/search + full AppleScript writes, behind one safety layer."
+readme = "README.md"
+license = "GPL-3.0-or-later"
+authors = [
+    { name = "Ernesto Cobos", email = "ernesto@cobos.io" },
+]
+requires-python = ">=3.10"
+keywords = ["mcp", "apple-mail", "macos", "fastmcp", "email"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Environment :: MacOS X",
+    "Intended Audience :: Developers",
+    "License :: OSI Approved :: GNU General Public License v3 or later (GPLv3+)",
+    "Operating System :: MacOS :: MacOS X",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Topic :: Communications :: Email",
+]
+dependencies = [
+    "fastmcp>=3.1",
+    "pydantic>=2.7",
+    "pydantic-settings>=2.4",
+    "selectolax>=0.4.8",
+    "PyYAML>=6.0",
+]
+
+[project.optional-dependencies]
+watch = ["watchfiles>=1.0"]
+semantic = ["sqlite-vec>=0.1.6", "pyobjc-framework-NaturalLanguage>=10.3; sys_platform == 'darwin'"]
+semantic-minilm = ["onnxruntime>=1.18", "tokenizers>=0.20", "numpy>=1.26"]
+dev = [
+    "pytest>=8.0",
+    "pytest-cov>=6.0",
+    "pytest-asyncio>=0.24",
+    "ruff>=0.14.8",
+    "shiv>=1.0.6",
+    # Lightweight C extension (not a heavy ML dep) so CI genuinely exercises
+    # the vec0 KNN path in tests/test_vector_search.py rather than always
+    # skipping it; never a transitive dependency of the published package.
+    "sqlite-vec>=0.1.6",
+    # So CI's macOS runners genuinely exercise the real Apple NaturalLanguage
+    # semantic backend (tests/test_vector_search.py::
+    # test_apple_nl_backend_ranks_by_real_semantic_similarity) rather than
+    # always skipping it; never a transitive dependency of the published
+    # package.
+    "pyobjc-framework-NaturalLanguage>=10.3; sys_platform == 'darwin'",
+]
+full = ["cobos-apple-mail-mcp[watch,semantic]"]
+
+[project.urls]
+Homepage = "https://github.com/ErnestoCobos/cobos-apple-mail-mcp"
+Wiki = "https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki"
+Issues = "https://github.com/ErnestoCobos/cobos-apple-mail-mcp/issues"
+
+[project.scripts]
+apple-mail-mcp = "cobos_apple_mail_mcp.cli:main"
+
+[tool.hatch.build.targets.wheel]
+# hatchling includes the whole directory tree under each "packages" entry by
+# default (not just .py files), so write/scripts/*.js and skills/*/recipe.yaml
+# need no special handling. Only files OUTSIDE the package tree need
+# force-include — here, just the root-level config example.
+packages = ["src/cobos_apple_mail_mcp"]
+
+[tool.hatch.build.targets.wheel.force-include]
+"config.toml.example" = "cobos_apple_mail_mcp/config.toml.example"
+
+[tool.ruff]
+line-length = 100
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+asyncio_mode = "auto"
+
+[tool.coverage.run]
+source = ["src/cobos_apple_mail_mcp"]

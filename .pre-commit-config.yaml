@@ -1,0 +1,15 @@
+repos:
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.14.8
+    hooks:
+      - id: ruff
+        args: [--fix]
+
+  - repo: local
+    hooks:
+      - id: check-docs-sync
+        name: docs-sync drift guard
+        entry: python scripts/check_docs_sync.py
+        language: system
+        pass_filenames: false
+        always_run: true

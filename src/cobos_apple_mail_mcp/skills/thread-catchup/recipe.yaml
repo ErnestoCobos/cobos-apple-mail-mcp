@@ -1,0 +1,14 @@
+name: thread-catchup
+description: Summarize a conversation thread so the user can catch up quickly.
+arguments:
+  - name: message_id
+    required: false
+    description: Any message_id belonging to the thread to summarize.
+    default: ""
+  - name: thread_id
+    required: false
+    description: A thread_id (from a prior search or get_email_thread call), if known.
+    default: ""
+uses_tools: [get_email_thread]
+uses_resources: ["email://threads/{thread_id}", "email://message/{message_id}"]
+prompt_template: prompt.md

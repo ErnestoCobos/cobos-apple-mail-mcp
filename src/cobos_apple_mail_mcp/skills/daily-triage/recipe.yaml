@@ -1,0 +1,10 @@
+name: daily-triage
+description: Triage today's inbox and propose a concrete action plan.
+arguments:
+  - name: account
+    required: false
+    description: Restrict triage to one account (omit for all accounts).
+    default: "all accounts"
+uses_tools: [get_inbox_overview, get_needs_response, get_awaiting_reply]
+uses_resources: [email://inbox-summary, email://needs-response, email://awaiting-reply]
+prompt_template: prompt.md

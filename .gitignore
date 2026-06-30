@@ -1,0 +1,33 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# Packaging
+*.pyz
+
+# Swift
+swift/**/.build/
+swift/**/.swiftpm/
+
+# macOS
+.DS_Store
+
+# Editors
+.vscode/
+.idea/
+
+# Local config / data (never commit real mailbox data or local config)
+.cobos-apple-mail-mcp/
+*.db
+*.db-wal
+*.db-shm
