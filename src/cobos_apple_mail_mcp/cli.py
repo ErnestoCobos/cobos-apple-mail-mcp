@@ -263,8 +263,9 @@ def build_parser() -> argparse.ArgumentParser:
     p_move = sub.add_parser("move")
     p_move.add_argument("message_ids", nargs="+")
     p_move.add_argument("--to-mailbox", required=True)
-    p_move.add_argument("--account")
-    p_move.add_argument("--mailbox")
+    p_move.add_argument("--to-account", help="destination account (for moving across accounts)")
+    p_move.add_argument("--account", help="source account hint (where the message is now)")
+    p_move.add_argument("--mailbox", help="source mailbox hint (where the message is now)")
     p_move.add_argument("--dry-run", action="store_true")
     p_move.add_argument("--max-moves", type=int)
 
@@ -709,6 +710,7 @@ def _main(argv: list[str] | None = None) -> int:
                 cfg,
                 args.message_ids,
                 args.to_mailbox,
+                to_account=args.to_account,
                 account=args.account,
                 mailbox=args.mailbox,
                 dry_run=args.dry_run,

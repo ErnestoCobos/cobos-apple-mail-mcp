@@ -65,6 +65,7 @@ def move_email(
     message_ids: list[str],
     to_mailbox: str,
     *,
+    to_account: str | None = None,
     account: str | None = None,
     mailbox: str | None = None,
     dry_run: bool = False,
@@ -87,6 +88,7 @@ def move_email(
                 "mailboxHint": r.mailbox_name,
                 "messageId": to_mail_message_id(r.canonical_id),
                 "toMailbox": to_mailbox,
+                "toAccount": to_account,
             },
         )
 

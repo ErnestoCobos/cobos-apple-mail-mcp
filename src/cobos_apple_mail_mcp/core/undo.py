@@ -89,6 +89,10 @@ def _undo_move(conn: sqlite3.Connection, jxa: JXAExecutor, row: sqlite3.Row) -> 
             "mailboxHint": resolved.mailbox_name,
             "messageId": to_mail_message_id(resolved.canonical_id),
             "toMailbox": row["from_mailbox"],
+            # Undo always moves the message back to the account it came from.
+            # `resolved` is wherever it is *now* (the move target, possibly a
+            # different account); the destination is the recorded source account.
+            "toAccount": row["account_name"],
         },
     )
 

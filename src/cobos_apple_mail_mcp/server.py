@@ -475,12 +475,21 @@ def build_server(config: Config) -> FastMCP:
     def move_email(
         message_ids: list[str],
         to_mailbox: str,
+        to_account: str | None = None,
         account: str | None = None,
         mailbox: str | None = None,
         dry_run: bool = False,
         max_moves: int | None = None,
     ) -> dict:
-        """Move messages to another mailbox. Batch default: 1 (config.batch_limits.move)."""
+        """Move messages to another mailbox, in the same account or a different one.
+
+        `to_mailbox` is the destination mailbox name; `to_account` is the destination
+        account — set it to move ACROSS accounts (without it the destination is looked
+        up in the message's own account, and a cross-account destination fails as
+        "target mailbox not found"). `account`/`mailbox` are optional hints for the
+        SOURCE (where the message currently is) — do not use them for the destination.
+        Batch default: 1 (config.batch_limits.move).
+        """
         return _dump(
             write_tools.move_email(
                 ctx.conn,
@@ -488,6 +497,7 @@ def build_server(config: Config) -> FastMCP:
                 ctx.config,
                 message_ids,
                 to_mailbox,
+                to_account=to_account,
                 account=account,
                 mailbox=mailbox,
                 dry_run=dry_run,

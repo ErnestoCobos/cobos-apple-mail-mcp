@@ -87,6 +87,34 @@ function findMailbox(account, hint) {
   return null;
 }
 
+// Like findMailbox but also descends into nested mailboxes (Mail lets a
+// mailbox contain sub-mailboxes; account.mailboxes() only returns the top
+// level). Used for a move TARGET so a subfolder destination resolves too.
+function _searchNestedMailbox(mailbox, lowerHint) {
+  try {
+    if (mailbox.name().toLowerCase() === lowerHint) return mailbox;
+    var children = mailbox.mailboxes();
+    for (var i = 0; i < children.length; i++) {
+      var found = _searchNestedMailbox(children[i], lowerHint);
+      if (found) return found;
+    }
+  } catch (e) {}
+  return null;
+}
+
+function findMailboxDeep(account, hint) {
+  var flat = findMailbox(account, hint);
+  if (flat) return flat;
+  var lowerHint = String(hint == null ? "" : hint).toLowerCase();
+  if (!lowerHint) return null;
+  var tops = account.mailboxes();
+  for (var i = 0; i < tops.length; i++) {
+    var found = _searchNestedMailbox(tops[i], lowerHint);
+    if (found) return found;
+  }
+  return null;
+}
+
 function listAccounts(args) {
   var app = MailApp();
   var accounts = app.accounts();
@@ -200,10 +228,24 @@ function getMessageHandle(args) {
 
 function moveEmail(args) {
   var handle = getMessageHandle(args);
-  var targetMailbox = findMailbox(handle.account, args.toMailbox);
-  if (!targetMailbox) throw "target mailbox not found: " + args.toMailbox;
+  // The destination may live in a DIFFERENT account than the message. Resolve
+  // the target mailbox in the named target account (default: the message's own
+  // account), searching nested mailboxes too — Mail's move() happily moves
+  // across accounts once we hand it the right mailbox object. Without this the
+  // target was only ever looked up in the source account (JXA error -2700).
+  var targetAccount = handle.account;
+  if (args.toAccount) {
+    targetAccount = findAccount(handle.app, args.toAccount);
+    if (!targetAccount) throw "target account not found: " + args.toAccount;
+  }
+  var targetMailbox = findMailboxDeep(targetAccount, args.toMailbox);
+  if (!targetMailbox) {
+    throw "target mailbox not found: " + args.toMailbox +
+      ' in account "' + targetAccount.name() + '"' +
+      (args.toAccount ? "" : " (if the destination is in another account, pass to_account)");
+  }
   handle.app.move(handle.message, { to: targetMailbox });
-  return { moved: true, toMailbox: targetMailbox.name() };
+  return { moved: true, toMailbox: targetMailbox.name(), toAccount: targetAccount.name() };
 }
 
 function updateEmailStatus(args) {

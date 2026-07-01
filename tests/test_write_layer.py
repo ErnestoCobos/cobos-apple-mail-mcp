@@ -82,6 +82,31 @@ def test_move_email_succeeds_and_journals_undo():
     assert row["to_mailbox"] == "Archive"
 
 
+def test_move_email_cross_account_threads_to_account_to_jxa():
+    """Regression (reported via Cowork): moving to a mailbox in a DIFFERENT
+    account must pass `to_account` to the JXA moveEmail as `toAccount`, so the
+    destination mailbox is resolved in the target account rather than the
+    message's own account (which raised '-2700 target mailbox not found')."""
+    conn = _conn()
+    jxa = _jxa_for_move()
+    cfg = _cfg()
+
+    result = organize.move_email(
+        conn, jxa, cfg, ["m1@x.com"], "Microland", to_account="COBOS/GAMON"
+    )
+
+    assert result.count == 1
+    move_calls = [args for name, args in jxa.calls if name == "moveEmail"]
+    assert len(move_calls) == 1
+    assert move_calls[0]["toMailbox"] == "Microland"
+    assert move_calls[0]["toAccount"] == "COBOS/GAMON"
+    # same-account moves still send toAccount=None (destination = source account)
+    jxa2 = _jxa_for_move()
+    organize.move_email(conn, jxa2, cfg, ["m1@x.com"], "Archive")
+    same = [args for name, args in jxa2.calls if name == "moveEmail"][0]
+    assert same["toAccount"] is None
+
+
 def test_move_email_batch_limit_rejects_not_truncates():
     conn = _conn()
     jxa = FakeJXAExecutor()

@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "cobos-apple-mail-mcp"
-version = "0.2.2"
+version = "0.2.3"
 description = "Unified Apple Mail MCP server: fast on-disk reads/search + full AppleScript writes, behind one safety layer."
 readme = "README.md"
 license = "GPL-3.0-or-later"
