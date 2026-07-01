@@ -336,6 +336,12 @@ for how to build this yourself (`make pyz`) and the `apple-mail-mcp-full.pyz` va
 > # Claude Desktop only (skips the Claude Code CLI step):
 > bash scripts/install-claude-desktop.sh
 > ```
+> No clone? macOS ships `curl` (not `wget`), so run it straight from the web — process
+> substitution keeps the prompts interactive (review first if you prefer: `curl -fsSL <url> -o
+> install.sh`, `less install.sh`, then `bash install.sh`):
+> ```bash
+> bash <(curl -fsSL https://raw.githubusercontent.com/ErnestoCobos/cobos-apple-mail-mcp/main/scripts/install-claude-desktop.sh)
+> ```
 > Everything below is the manual path.
 
 Test first with the official inspector:
