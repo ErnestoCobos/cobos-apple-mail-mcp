@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>cobos-apple-mail-mcp — fast, safe Apple Mail for your AI agent</title>
+<meta name="description" content="A unified Apple Mail MCP server: millisecond on-disk search plus complete AppleScript writes, behind one safety layer. 31 tools. macOS. GPL-3.0. By Ernesto Cobos.">
+<link rel="canonical" href="https://apple-mail-mcp.cobos.io/">
+<meta property="og:type" content="website">
+<meta property="og:title" content="cobos-apple-mail-mcp — fast, safe Apple Mail for your AI agent">
+<meta property="og:description" content="Millisecond on-disk search + complete AppleScript writes, behind one safety layer. 31 MCP tools for macOS.">
+<meta property="og:image" content="https://apple-mail-mcp.cobos.io/assets/og.png">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230a0a0f'/%3E%3Crect x='6' y='9' width='20' height='14' rx='3' fill='none' stroke='%2300d4ff' stroke-width='2'/%3E%3Cpath d='M7 11l9 7 9-7' fill='none' stroke='%2300d4ff' stroke-width='2'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0a0a0f; --surface:#111118; --surface-soft:#ffffff06; --surface-elev:#ffffff0d;
+    --fg:#f8fafc; --body-soft:#f8fafcd1; --meta:#a8b5c7; --muted:#94a3b8;
+    --cyan:#00d4ff; --cyan-tint:#00d4ff14; --cyan-tint-strong:#00d4ff24; --cyan-glow:#00d4ff99;
+    --violet:#7c3aed; --amber:#f59e0b; --green:#22c55e;
+    --hairline:#ffffff14; --hairline-strong:#ffffff24;
+    --r-btn:12px; --r-card:20px; --r-card-sm:10px; --r-chip:999px;
+    --ls-overline:.22em; --ls-display:-.03em;
+    --sans:'Inter',-apple-system,BlinkMacSystemFont,'Segoe UI',Helvetica,Arial,sans-serif;
+    --mono:'JetBrains Mono',ui-monospace,SFMono-Regular,Menlo,monospace;
+    --maxw:1120px;
+  }
+  *,*::before,*::after{box-sizing:border-box}
+  html{scroll-behavior:smooth}
+  body{
+    margin:0; background:var(--bg); color:var(--fg); font-family:var(--sans);
+    line-height:1.55; -webkit-font-smoothing:antialiased; overflow-x:hidden;
+  }
+  body::before{
+    content:""; position:fixed; inset:0; z-index:0; pointer-events:none;
+    background:
+      radial-gradient(60% 50% at 78% -5%, #00d4ff1f, transparent 70%),
+      radial-gradient(45% 40% at 8% 8%, #7c3aed1a, transparent 70%);
+  }
+  .wrap{max-width:var(--maxw); margin:0 auto; padding:0 24px; position:relative; z-index:1}
+  a{color:inherit; text-decoration:none}
+  .mono{font-family:var(--mono)}
+  .overline{
+    font-family:var(--mono); font-size:12px; text-transform:uppercase;
+    letter-spacing:var(--ls-overline); color:var(--cyan);
+  }
+  /* nav */
+  header{
+    position:sticky; top:0; z-index:20;
+    backdrop-filter:blur(12px); background:#0a0a0fb3; border-bottom:1px solid var(--hairline);
+  }
+  nav{display:flex; align-items:center; gap:18px; height:62px}
+  .brand{display:flex; align-items:center; gap:9px; font-weight:600; font-size:15px}
+  .brand .dot{width:9px;height:9px;border-radius:999px;background:var(--cyan);box-shadow:0 0 12px var(--cyan-glow)}
+  .brand .crumb{color:var(--muted); font-family:var(--mono); font-size:13px}
+  .brand .crumb b{color:var(--body-soft); font-weight:500}
+  nav .spacer{flex:1}
+  nav .links{display:flex; gap:6px; align-items:center}
+  nav .links a{padding:9px 12px; border-radius:var(--r-card-sm); color:var(--meta); font-size:14px; transition:color .18s, background .18s}
+  nav .links a:hover{color:var(--fg); background:var(--surface-elev)}
+  .btn{
+    display:inline-flex; align-items:center; gap:8px; font-weight:600; font-size:14px;
+    padding:11px 18px; border-radius:var(--r-btn); border:1px solid transparent; cursor:pointer;
+    transition:transform .12s ease, box-shadow .18s ease, background .18s ease;
+  }
+  .btn-primary{background:var(--cyan); color:#001018; box-shadow:0 0 0 1px #00d4ff40, 0 10px 30px -12px var(--cyan-glow)}
+  .btn-primary:hover{transform:translateY(-1px); box-shadow:0 0 0 1px #00d4ff66, 0 16px 40px -14px var(--cyan-glow)}
+  .btn-ghost{background:var(--surface-elev); color:var(--fg); border-color:var(--hairline-strong)}
+  .btn-ghost:hover{background:#ffffff14}
+  nav .links .nav-hide{}
+  /* hero */
+  .hero{padding:76px 0 40px}
+  .hero h1{
+    font-size:clamp(34px,6vw,60px); line-height:1.03; letter-spacing:var(--ls-display);
+    font-weight:800; margin:18px 0 0; max-width:16ch;
+  }
+  .hero h1 .grad{background:linear-gradient(100deg,var(--cyan),var(--violet));-webkit-background-clip:text;background-clip:text;color:transparent}
+  .hero p.sub{font-size:clamp(16px,2.2vw,20px); color:var(--body-soft); max-width:56ch; margin:20px 0 0}
+  .cta{display:flex; flex-wrap:wrap; gap:12px; margin-top:28px}
+  .meta-row{display:flex; flex-wrap:wrap; gap:10px 20px; margin-top:26px; color:var(--muted); font-family:var(--mono); font-size:13px}
+  .meta-row span{display:inline-flex; align-items:center; gap:8px}
+  .meta-row .k{width:6px;height:6px;border-radius:999px;background:var(--green)}
+  .hero-grid{display:grid; grid-template-columns:1.05fr .95fr; gap:40px; align-items:center}
+  /* terminal card */
+  .term{
+    border:1px solid var(--hairline); border-radius:var(--r-card); overflow:hidden;
+    background:linear-gradient(180deg,#12121b,#0d0d14); box-shadow:0 40px 80px -40px #000, 0 0 0 1px #00d4ff10;
+  }
+  .term .bar{display:flex; align-items:center; gap:7px; padding:12px 15px; border-bottom:1px solid var(--hairline); background:#ffffff05}
+  .term .bar i{width:11px;height:11px;border-radius:999px;display:inline-block}
+  .term .bar i:nth-child(1){background:#ff5f57} .term .bar i:nth-child(2){background:#febc2e} .term .bar i:nth-child(3){background:#28c840}
+  .term .bar .t{margin-left:8px; color:var(--muted); font-family:var(--mono); font-size:12px}
+  .term pre{margin:0; padding:18px 18px 20px; font-family:var(--mono); font-size:13px; line-height:1.7; overflow-x:auto}
+  .c-prompt{color:var(--cyan)} .c-cmd{color:var(--fg)} .c-dim{color:var(--muted)}
+  .c-key{color:var(--violet)} .c-str{color:var(--green)} .c-num{color:var(--amber)} .c-mark{background:#00d4ff24;color:#eafcff;border-radius:3px;padding:0 3px}
+  /* sections */
+  section{padding:66px 0; position:relative; z-index:1}
+  .sec-head{max-width:60ch}
+  .sec-head h2{font-size:clamp(26px,3.6vw,38px); letter-spacing:-.02em; margin:12px 0 0; font-weight:700}
+  .sec-head p{color:var(--meta); font-size:17px; margin:14px 0 0}
+  /* feature grid */
+  .grid{display:grid; grid-template-columns:repeat(3,1fr); gap:18px; margin-top:40px}
+  .card{
+    background:var(--surface-soft); border:1px solid var(--hairline); border-radius:var(--r-card);
+    padding:22px; transition:border-color .2s, transform .2s, background .2s;
+  }
+  .card:hover{border-color:var(--cyan-tint-strong); transform:translateY(-2px); background:#ffffff08}
+  .card .ic{width:40px;height:40px;border-radius:11px;display:grid;place-items:center;border:1px solid var(--hairline-strong);background:var(--cyan-tint); margin-bottom:14px}
+  .card h3{margin:0 0 6px; font-size:17px; font-weight:600}
+  .card p{margin:0; color:var(--meta); font-size:14.5px; line-height:1.6}
+  .card .ic svg{width:20px;height:20px}
+  /* video */
+  .video-frame{
+    margin-top:34px; position:relative; aspect-ratio:16/9; border-radius:var(--r-card);
+    border:1px solid var(--hairline); overflow:hidden;
+    background:
+      radial-gradient(60% 80% at 50% 30%, #00d4ff14, transparent 70%),
+      linear-gradient(180deg,#101019,#0b0b12);
+    display:grid; place-items:center; text-align:center;
+  }
+  .video-frame .badge{position:absolute; top:14px; left:14px; font-family:var(--mono); font-size:11px; text-transform:uppercase; letter-spacing:.16em; color:var(--amber); border:1px solid #f59e0b40; background:#f59e0b14; padding:5px 10px; border-radius:999px}
+  .play{width:76px;height:76px;border-radius:999px;background:var(--cyan);display:grid;place-items:center;box-shadow:0 0 0 10px #00d4ff14, 0 20px 50px -18px var(--cyan-glow)}
+  .play svg{width:30px;height:30px;margin-left:4px;fill:#001018}
+  .video-frame .cap{margin-top:18px;color:var(--body-soft);font-weight:500}
+  .video-frame .cap small{display:block;color:var(--muted);font-family:var(--mono);font-size:12px;margin-top:6px}
+  /* how it works */
+  .paths{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:40px}
+  .path{border:1px solid var(--hairline); border-radius:var(--r-card); padding:24px; background:var(--surface-soft)}
+  .path.read{border-top:2px solid var(--cyan)} .path.write{border-top:2px solid var(--amber)}
+  .path h3{margin:0 0 4px; font-size:18px} .path .tag{font-family:var(--mono); font-size:12px; text-transform:uppercase; letter-spacing:.14em}
+  .path.read .tag{color:var(--cyan)} .path.write .tag{color:var(--amber)}
+  .path ul{margin:16px 0 0; padding:0; list-style:none}
+  .path li{padding:8px 0 8px 22px; position:relative; color:var(--body-soft); font-size:14.5px; border-top:1px solid var(--hairline)}
+  .path li:first-child{border-top:none}
+  .path li::before{content:"›"; position:absolute; left:2px; color:var(--muted)}
+  .bridge{margin-top:18px; text-align:center; color:var(--meta); font-family:var(--mono); font-size:13px}
+  .bridge b{color:var(--violet)}
+  /* install */
+  .install-grid{display:grid; grid-template-columns:1fr 1fr; gap:18px; margin-top:36px}
+  .copytip{color:var(--muted); font-size:13px; margin-top:14px; font-family:var(--mono)}
+  /* footer */
+  footer{border-top:1px solid var(--hairline); padding:44px 0 60px; position:relative; z-index:1}
+  .foot{display:flex; flex-wrap:wrap; gap:24px; align-items:center; justify-content:space-between}
+  .foot .fl{display:flex; gap:18px; flex-wrap:wrap}
+  .foot a{color:var(--meta); font-size:14px} .foot a:hover{color:var(--fg)}
+  .foot .made{color:var(--muted); font-size:13px; font-family:var(--mono)}
+  .foot .made a{color:var(--cyan)}
+  @media(max-width:860px){
+    .hero-grid{grid-template-columns:1fr; gap:30px}
+    .grid{grid-template-columns:1fr 1fr}
+    .paths,.install-grid{grid-template-columns:1fr}
+    nav .nav-hide{display:none}
+  }
+  @media(max-width:520px){ .grid{grid-template-columns:1fr} }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="wrap">
+    <nav>
+      <a class="brand" href="https://cobos.io">
+        <span class="dot"></span>
+        <span>cobos.io</span>
+        <span class="crumb">/&nbsp;<b>apple-mail-mcp</b></span>
+      </a>
+      <span class="spacer"></span>
+      <div class="links">
+        <a class="nav-hide" href="#features">Features</a>
+        <a class="nav-hide" href="#how">How it works</a>
+        <a class="nav-hide" href="#install">Install</a>
+        <a class="nav-hide" href="https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki">Docs</a>
+        <a class="btn btn-ghost" href="https://github.com/ErnestoCobos/cobos-apple-mail-mcp">GitHub</a>
+      </div>
+    </nav>
+  </div>
+</header>
+
+<main>
+<section class="hero">
+  <div class="wrap hero-grid">
+    <div>
+      <span class="overline">Apple&nbsp;Mail · Model&nbsp;Context&nbsp;Protocol&nbsp;server</span>
+      <h1>Fast, safe Apple&nbsp;Mail for your <span class="grad">AI agent</span>.</h1>
+      <p class="sub">A unified MCP server: millisecond on-disk search and complete AppleScript
+        writes, bridged by a canonical Message-ID and gated by one honest safety layer.</p>
+      <div class="cta">
+        <a class="btn btn-primary" href="#install">Install in 30&nbsp;seconds →</a>
+        <a class="btn btn-ghost" href="https://github.com/ErnestoCobos/cobos-apple-mail-mcp">★ Star on GitHub</a>
+      </div>
+      <div class="meta-row">
+        <span><i class="k"></i>31 MCP tools</span>
+        <span><i class="k"></i>macOS · Apple&nbsp;Mail</span>
+        <span><i class="k"></i>Python 3.10+</span>
+        <span><i class="k"></i>GPL-3.0-or-later</span>
+      </div>
+    </div>
+    <div class="term" aria-hidden="true">
+      <div class="bar"><i></i><i></i><i></i><span class="t">apple-mail-mcp — zsh</span></div>
+<pre><span class="c-prompt">$</span> <span class="c-cmd">apple-mail-mcp search</span> <span class="c-str">"invoice"</span> <span class="c-key">--scope</span> subject <span class="c-key">--highlight</span>
+<span class="c-dim">{</span>
+  <span class="c-key">"timing_ms"</span>: <span class="c-num">3.2</span>,
+  <span class="c-key">"total_estimated"</span>: <span class="c-num">14</span>,
+  <span class="c-key">"hits"</span>: [{
+     <span class="c-key">"subject"</span>: <span class="c-str">"Your <span class="c-mark">invoice</span> #4471 is ready"</span>,
+     <span class="c-key">"sender"</span>:  <span class="c-str">"billing@vendor.example.com"</span>,
+     <span class="c-key">"message_id"</span>: <span class="c-str">"abc123@vendor.example.com"</span>
+  }]
+<span class="c-dim">}</span>
+<span class="c-dim"># full-mailbox · BM25-ranked · no Mail.app scripting</span>
+</pre>
+    </div>
+  </div>
+</section>
+
+<section id="features">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="overline">Why it's different</span>
+      <h2>Both halves of Apple Mail automation, in one server.</h2>
+      <p>Read-only servers are fast but can't act. Write servers can act but are slow and target
+        messages by fuzzy subject. This is the union of both — plus the parts neither had.</p>
+    </div>
+    <div class="grid">
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 2L3 14h7l-1 8 10-12h-7z"/></svg></div>
+        <h3>Millisecond search</h3>
+        <p>FTS5 over a local index built from the same on-disk data Mail uses — 9–20&nbsp;ms across a real 210k-message mailbox. Optional semantic + hybrid.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2l8 4v6c0 5-3.5 8-8 10-4.5-2-8-5-8-10V6z"/><path d="M9 12l2 2 4-4"/></svg></div>
+        <h3>Safety-gated writes</h3>
+        <p>Every send/move/flag passes one <span class="mono">guard()</span>: read-only mode, batch caps, dry-run previews, and explicit confirm for destructive ops.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#7c3aed" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14L4 9l5-5"/><path d="M4 9h11a5 5 0 0 1 5 5v1"/></svg></div>
+        <h3>Honest undo</h3>
+        <p>Move, trash, flag and status changes are journaled and reversible with <span class="mono">undo_last</span>. Sends and permanent deletes aren't — and it says so.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3"/></svg></div>
+        <h3>Right message, always</h3>
+        <p>Writes resolve the target by canonical RFC822 Message-ID and <b>read it back to verify</b> before mutating — never a fuzzy subject match that hits the wrong mail.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg></div>
+        <h3>Never hangs</h3>
+        <p>Every <span class="mono">osascript</span> call runs in its own process group with a hard timeout and is killed on expiry. Reads never depend on Mail.app being responsive.</p>
+      </div>
+      <div class="card">
+        <div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="#00d4ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="7" height="7" rx="1.5"/><rect x="14" y="3" width="7" height="7" rx="1.5"/><rect x="3" y="14" width="7" height="7" rx="1.5"/><rect x="14" y="14" width="7" height="7" rx="1.5"/></svg></div>
+        <h3>31 tools + recipes</h3>
+        <p>Search, threads, inbox triage, compose/reply/forward, drafts, mailboxes, flag colors, mail rules, RFC-8058 unsubscribe, contacts — as MCP tools and a CLI.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="demo">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="overline">See it work</span>
+      <h2>From "what needs a reply?" to a drafted answer.</h2>
+      <p>A 60-second walkthrough: an agent searches the whole mailbox, surfaces what's awaiting a
+        reply, and drafts a response into Mail — nothing sends without you.</p>
+    </div>
+    <!-- VIDEO PLACEHOLDER: replace this block with the demo embed (see docs/wiki or README). -->
+    <div class="video-frame" role="img" aria-label="Demo video placeholder">
+      <span class="badge">Demo · coming soon</span>
+      <div>
+        <div class="play"><svg viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg></div>
+        <div class="cap">Product demo
+          <small>drop-in: a 60–90s screen recording · placeholder</small>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section id="how">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="overline">How it works</span>
+      <h2>Two paths, one identity bridge.</h2>
+      <p>Reads never touch Mail.app; writes are the only correct way to make it act. A canonical
+        Message-ID connects them so the agent acts on exactly the message it found.</p>
+    </div>
+    <div class="paths">
+      <div class="path read">
+        <span class="tag">Read path — fast, disk-direct</span>
+        <h3>Never touches Mail.app</h3>
+        <ul>
+          <li>Envelope Index opened <span class="mono">immutable=1</span> — no locks, no waits</li>
+          <li><span class="mono">.emlx</span> files parsed from disk into a local FTS5 index</li>
+          <li>Keyword + optional semantic / hybrid search, JWZ threading, triage</li>
+          <li>Kept fresh by an incremental <span class="mono">--watch</span> updater</li>
+        </ul>
+      </div>
+      <div class="path write">
+        <span class="tag">Write path — via guard()</span>
+        <h3>AppleScript / JXA, gated</h3>
+        <ul>
+          <li>Send / reply / move / flag / trash through <span class="mono">osascript</span></li>
+          <li>read-only mode · batch caps · dry-run · confirm</li>
+          <li>Reversible actions journaled for <span class="mono">undo_last</span></li>
+          <li>Hard timeouts + process-group kill — it can't hang</li>
+        </ul>
+      </div>
+    </div>
+    <p class="bridge">bridged by a <b>canonical RFC822 Message-ID</b>, read-back verified before any mutation</p>
+  </div>
+</section>
+
+<section id="install">
+  <div class="wrap">
+    <div class="sec-head">
+      <span class="overline">Install</span>
+      <h2>Running in about 30 seconds.</h2>
+      <p>macOS with Apple Mail configured, Python 3.10+, and Full Disk Access. macOS ships
+        <span class="mono">curl</span> — no <span class="mono">wget</span> needed.</p>
+    </div>
+    <div class="install-grid">
+      <div>
+        <div class="term">
+          <div class="bar"><i></i><i></i><i></i><span class="t">one command — Claude Desktop</span></div>
+<pre><span class="c-dim"># installs the CLI, indexes, and registers</span>
+<span class="c-dim"># with Claude Desktop — backs up your config</span>
+<span class="c-prompt">$</span> <span class="c-cmd">bash &lt;(curl -fsSL \</span>
+    <span class="c-str">https://raw.githubusercontent.com/ErnestoCobos/\</span>
+<span class="c-str">cobos-apple-mail-mcp/main/scripts/install-claude-desktop.sh</span><span class="c-cmd">)</span>
+</pre>
+        </div>
+        <p class="copytip">Prefer to review first? <span class="c-dim">curl … -o install.sh</span>, read it, then <span class="c-dim">bash install.sh</span>.</p>
+      </div>
+      <div>
+        <div class="term">
+          <div class="bar"><i></i><i></i><i></i><span class="t">manual — any MCP client</span></div>
+<pre><span class="c-prompt">$</span> <span class="c-cmd">uvx cobos-apple-mail-mcp</span> serve   <span class="c-dim"># zero-install</span>
+<span class="c-dim"># or a persistent CLI:</span>
+<span class="c-prompt">$</span> <span class="c-cmd">pipx install</span> cobos-apple-mail-mcp
+<span class="c-prompt">$</span> <span class="c-cmd">apple-mail-mcp</span> init
+<span class="c-prompt">$</span> <span class="c-cmd">apple-mail-mcp</span> index build
+<span class="c-prompt">$</span> <span class="c-cmd">apple-mail-mcp</span> search <span class="c-str">"budget review"</span>
+</pre>
+        </div>
+        <p class="copytip">Claude Desktop · Claude Code · Codex · Kimi — <a href="https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Install-per-client" style="color:var(--cyan)">per-client setup →</a></p>
+      </div>
+    </div>
+    <div class="cta" style="margin-top:30px">
+      <a class="btn btn-primary" href="https://github.com/ErnestoCobos/cobos-apple-mail-mcp#readme">Read the full guide →</a>
+      <a class="btn btn-ghost" href="https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki">Browse the Wiki</a>
+    </div>
+  </div>
+</section>
+</main>
+
+<footer>
+  <div class="wrap foot">
+    <div>
+      <div class="brand" style="margin-bottom:10px"><span class="dot"></span><span>cobos.io</span><span class="crumb">/&nbsp;<b>apple-mail-mcp</b></span></div>
+      <div class="made">A project by <a href="https://cobos.io">Ernesto&nbsp;Cobos</a> · GPL-3.0-or-later</div>
+    </div>
+    <div class="fl">
+      <a href="https://github.com/ErnestoCobos/cobos-apple-mail-mcp">GitHub</a>
+      <a href="https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki">Wiki</a>
+      <a href="https://pypi.org/project/cobos-apple-mail-mcp/">PyPI</a>
+      <a href="https://github.com/ErnestoCobos/cobos-apple-mail-mcp/blob/main/LICENSE">License</a>
+      <a href="https://cobos.io">↩ cobos.io</a>
+    </div>
+  </div>
+</footer>
+
+</body>
+</html>
