@@ -113,6 +113,24 @@ tell the caller up front whether an operation can be undone at all, and permanen
 delete/empty-trash/send are reported as non-undoable rather than silently accepted with a fake
 promise of recoverability.
 
+## Non-batch writes: rule lifecycle (`gate_nonbatch`)
+
+`guard()` is built around a batch of resolved messages, which doesn't fit operations on other
+objects like Mail rules. Those go through `core/safety.py::gate_nonbatch()` — the same
+read-only / dry-run / confirm discipline, minus the message-batch machinery. It raises
+`ReadOnlyMode` under `--read-only`, returns the preview dict on `dry_run` (caller mutates nothing),
+raises `ConfirmationRequired` when confirmation is needed but absent, and otherwise returns `None`
+to proceed.
+
+`enable_rule`/`disable_rule` just need read-only + dry-run (they're trivially reversible by the
+opposite call). **`delete_rule` always requires `confirm=true`** — not via `config.confirmation`
+(an older `config.toml` generated before this feature wouldn't list it, silently dropping the
+gate), but unconditionally in code, because a deleted rule is strictly *more* destructive than a
+deleted message: Mail's scripting cannot recreate a rule at all (see
+[Tools reference](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Tools-reference#mail-rules-toolswrite_toolspy--writerulespy-jxa-backed)).
+It is therefore not journaled/undoable, and `delete_rule` is included in the default
+`require_confirm` list for discoverability even though the code enforces confirmation regardless.
+
 ## Unsubscribe: a sender-controlled URL
 
 `unsubscribe_from_sender` (`write/unsubscribe.py`) is an outbound action gated by `--read-only`

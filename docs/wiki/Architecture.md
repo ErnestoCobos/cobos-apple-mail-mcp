@@ -86,12 +86,13 @@ sequenceDiagram
 ```
 src/cobos_apple_mail_mcp/
 ├── server.py, cli.py, config.py        # FastMCP app, CLI, config
-├── core/                                # identity, resolution, safety, undo, shared models/errors
+├── core/                                # identity, resolution, safety, undo, flags, shared models/errors
 ├── storage/                             # index.db connection + schema migrations
 ├── read/                                # envelope reader, .emlx parser, indexer, watcher,
-│                                         #   FTS5/trigram/vector search, JWZ threader
-├── knowledge/                           # analytics, triage, contacts — all over index.db
-├── write/                               # JXA executor + scripts, compose, drafts, organize, attachments
+│                                         #   FTS5/trigram/vector search, JWZ threader, account names
+├── knowledge/                           # analytics, triage, contacts (list + profile) — all over index.db
+├── write/                               # JXA executor + scripts, compose, drafts, organize,
+│                                         #   attachments, rules, unsubscribe
 ├── tools/                               # thin MCP tool wrappers over read/write/knowledge
 ├── resources/                           # email://… resource registration
 └── skills/                              # recipe loader + 5 bundled recipes (MCP prompts)

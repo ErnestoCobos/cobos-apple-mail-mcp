@@ -13,11 +13,12 @@ from cobos_apple_mail_mcp.config import Config
 from cobos_apple_mail_mcp.core.models import (
     Attachment,
     OperationResult,
+    Rule,
     UndoResult,
     UnsubscribeResult,
 )
 from cobos_apple_mail_mcp.core.undo import undo_last as _undo_last
-from cobos_apple_mail_mcp.write import attachments, compose, drafts, organize, unsubscribe
+from cobos_apple_mail_mcp.write import attachments, compose, drafts, organize, rules, unsubscribe
 from cobos_apple_mail_mcp.write.jxa_executor import JXAExecutor
 
 
@@ -29,6 +30,20 @@ def unsubscribe_from_sender(
     conn: sqlite3.Connection, jxa: JXAExecutor, config: Config, message_id: str, **kwargs
 ) -> UnsubscribeResult:
     return unsubscribe.unsubscribe_from_sender(conn, jxa, config, message_id, **kwargs)
+
+
+def list_rules(jxa: JXAExecutor) -> list[Rule]:
+    return rules.list_rules(jxa)
+
+
+def set_rule_enabled(
+    jxa: JXAExecutor, config: Config, name: str, enabled: bool, **kwargs
+) -> dict:
+    return rules.set_rule_enabled(jxa, config, name, enabled, **kwargs)
+
+
+def delete_rule(jxa: JXAExecutor, config: Config, name: str, **kwargs) -> dict:
+    return rules.delete_rule(jxa, config, name, **kwargs)
 
 
 def reply_to_email(

@@ -69,7 +69,11 @@ Per-call ceilings — exceeding **rejects** the call, never silently truncates.
 
 | Key | Default |
 |---|---|
-| `require_confirm` | `["permanent_delete", "empty_trash"]` |
+| `require_confirm` | `["permanent_delete", "empty_trash", "delete_rule"]` |
+
+`delete_rule` is listed for discoverability, but its confirmation is enforced in code regardless of
+this list — a deleted rule can't be recreated via Mail's scripting, so an older `config.toml` can't
+opt out of the gate (see [Safety](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Safety-confirmation-and-undo#non-batch-writes-rule-lifecycle-gate_nonbatch)).
 
 ## `[embeddings]`
 

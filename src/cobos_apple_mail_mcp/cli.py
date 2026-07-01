@@ -302,6 +302,21 @@ def build_parser() -> argparse.ArgumentParser:
     p_unsub.add_argument("--mailbox")
     p_unsub.add_argument("--dry-run", action="store_true")
 
+    sub.add_parser("rules")  # list all rules
+
+    p_rule_enable = sub.add_parser("rule-enable")
+    p_rule_enable.add_argument("name")
+    p_rule_enable.add_argument("--dry-run", action="store_true")
+
+    p_rule_disable = sub.add_parser("rule-disable")
+    p_rule_disable.add_argument("name")
+    p_rule_disable.add_argument("--dry-run", action="store_true")
+
+    p_rule_delete = sub.add_parser("rule-delete")
+    p_rule_delete.add_argument("name")
+    p_rule_delete.add_argument("--confirm", action="store_true")
+    p_rule_delete.add_argument("--dry-run", action="store_true")
+
     return parser
 
 
@@ -770,6 +785,32 @@ def _main(argv: list[str] | None = None) -> int:
                 account=args.account,
                 mailbox=args.mailbox,
                 dry_run=args.dry_run,
+            )
+        )
+        return 0
+
+    if args.command == "rules":
+        from cobos_apple_mail_mcp.tools import write_tools
+
+        _print_json(write_tools.list_rules(_jxa(cfg)))
+        return 0
+
+    if args.command in ("rule-enable", "rule-disable"):
+        from cobos_apple_mail_mcp.tools import write_tools
+
+        _print_json(
+            write_tools.set_rule_enabled(
+                _jxa(cfg), cfg, args.name, args.command == "rule-enable", dry_run=args.dry_run
+            )
+        )
+        return 0
+
+    if args.command == "rule-delete":
+        from cobos_apple_mail_mcp.tools import write_tools
+
+        _print_json(
+            write_tools.delete_rule(
+                _jxa(cfg), cfg, args.name, confirm=args.confirm, dry_run=args.dry_run
             )
         )
         return 0

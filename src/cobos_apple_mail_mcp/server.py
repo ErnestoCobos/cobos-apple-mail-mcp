@@ -604,6 +604,40 @@ def build_server(config: Config) -> FastMCP:
             )
         )
 
+    @mcp.tool
+    @_wrap_errors
+    def list_rules() -> list[dict]:
+        """List all Mail rules: name, enabled, conditions, and action
+        properties. Read-only (rules are read live from Mail via JXA)."""
+        return _dump(write_tools.list_rules(ctx.jxa))
+
+    @mcp.tool
+    @_wrap_errors
+    def enable_rule(name: str, dry_run: bool = False) -> dict:
+        """Enable a Mail rule by name. Blocked under --read-only."""
+        return _dump(write_tools.set_rule_enabled(ctx.jxa, ctx.config, name, True, dry_run=dry_run))
+
+    @mcp.tool
+    @_wrap_errors
+    def disable_rule(name: str, dry_run: bool = False) -> dict:
+        """Disable a Mail rule by name. Blocked under --read-only."""
+        return _dump(
+            write_tools.set_rule_enabled(ctx.jxa, ctx.config, name, False, dry_run=dry_run)
+        )
+
+    @mcp.tool
+    @_wrap_errors
+    def delete_rule(name: str, confirm: bool = False, dry_run: bool = False) -> dict:
+        """Delete a Mail rule by name. Irreversible — Mail's scripting cannot
+        recreate a rule (and cannot create one at all: conditions aren't
+        scriptable), so this needs confirm=true and is not undoable. Blocked
+        under --read-only."""
+        return _dump(
+            write_tools.delete_rule(
+                ctx.jxa, ctx.config, name, confirm=confirm, dry_run=dry_run
+            )
+        )
+
     # ---------------------------------------------------------------
     # Resources (email://...) & recipes (skills/<name> -> MCP prompts)
     # ---------------------------------------------------------------

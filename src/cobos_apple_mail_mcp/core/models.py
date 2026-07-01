@@ -334,3 +334,26 @@ class UnsubscribeResult(BaseModel):
     target: str | None = None  # the https URL posted to, or the mailto address
     detail: str | None = None
     dry_run: bool = False
+
+
+# ---------------------------------------------------------------------------
+# Mail rules
+# ---------------------------------------------------------------------------
+
+
+class RuleCondition(BaseModel):
+    rule_type: str | None = None  # e.g. "from header", "to header", "subject header"
+    qualifier: str | None = None  # e.g. "does contain value"
+    expression: str | None = None
+    header: str | None = None  # for "header key" conditions
+
+
+class Rule(BaseModel):
+    name: str
+    enabled: bool = False
+    all_conditions_must_be_met: bool = False
+    conditions: list[RuleCondition] = Field(default_factory=list)
+    # Raw action properties as Mail exposes them (shouldMoveMessage/moveMessage/
+    # markFlagged/markFlagIndex/colorMessage/markRead/deleteMessage/...); kept as
+    # a dict so the shape follows Mail's dictionary rather than a lossy subset.
+    actions: dict[str, Any] = Field(default_factory=dict)

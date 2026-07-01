@@ -24,6 +24,7 @@ tools — a single source of truth, never a parallel implementation.
 | `email://awaiting-reply` | `list[AwaitingReplyItem]` |
 | `email://needs-response` | `list[NeedsResponseItem]` |
 | `email://stats` | `Statistics` (default scope/window) |
+| `email://rules` | `list[Rule]` (read live from Mail via JXA) |
 
 All resource functions return a single JSON string (`_dump_json()`), even for list-shaped
 results — a list-returning resource function (`-> list[dict]`) confuses FastMCP's content

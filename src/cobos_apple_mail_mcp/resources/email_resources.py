@@ -87,3 +87,10 @@ def register_resources(mcp: FastMCP, ctx: ServerContext) -> None:
     def stats_resource() -> str:
         """Account-wide statistics over the default date range."""
         return _dump_json(analytics.get_statistics(ctx.conn))
+
+    @mcp.resource("email://rules")
+    def rules_resource() -> str:
+        """All Mail rules (read live from Mail via JXA)."""
+        from cobos_apple_mail_mcp.write import rules
+
+        return _dump_json(rules.list_rules(ctx.jxa))

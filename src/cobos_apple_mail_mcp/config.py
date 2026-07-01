@@ -66,7 +66,7 @@ class BatchLimitsSection(BaseModel):
 
 class ConfirmationSection(BaseModel):
     require_confirm: list[str] = Field(
-        default_factory=lambda: ["permanent_delete", "empty_trash"]
+        default_factory=lambda: ["permanent_delete", "empty_trash", "delete_rule"]
     )
 
 
@@ -218,7 +218,7 @@ trash = 5
 delete = 1
 
 [confirmation]
-require_confirm = ["permanent_delete", "empty_trash"]
+require_confirm = ["permanent_delete", "empty_trash", "delete_rule"]
 
 [embeddings]
 enabled = false            # optional hybrid/semantic search layer, off by default

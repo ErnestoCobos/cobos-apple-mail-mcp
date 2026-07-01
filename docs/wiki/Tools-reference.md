@@ -7,7 +7,7 @@ last_verified: 2026-06-30
 
 # Tools reference
 
-All 25 tools are registered in `server.py` and mirrored as CLI subcommands
+All 31 tools are registered in `server.py` and mirrored as CLI subcommands
 (`apple-mail-mcp <command> ...`, JSON output). Every parameter name matches between the MCP tool
 and its CLI flag (CLI flags are kebab-case, e.g. `to_mailbox` → `--to-mailbox`).
 
@@ -57,6 +57,23 @@ and its CLI flag (CLI flags are kebab-case, e.g. `to_mailbox` → `--to-mailbox`
 | `save_email_attachment` | `message_id, attachment_name, save_path, account?, mailbox?` | `save_path` is an explicit full path (vs. `get_email_attachment`'s default-directory shape) |
 | `undo_last` | `batch_id?, dry_run=false` | reverses the most recent undoable batch, or a specific one |
 | `unsubscribe_from_sender` | `message_id, account?, mailbox?, dry_run=false` | re-parses the source `.emlx`'s `List-Unsubscribe`/`List-Unsubscribe-Post` on demand; prefers an RFC-8058 one-click **https** POST (stdlib `urllib`, no Mail.app), else sends the `mailto:` unsubscribe via `compose_email`. Returns `method=one-click-post\|mailto\|none-found` (never a bare bool). Outbound → blocked under `--read-only`. See [Safety](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Safety-confirmation-and-undo#unsubscribe-a-sender-controlled-url) for the URL-trust handling. |
+
+## Mail rules (`tools/write_tools.py` → `write/rules.py`, JXA-backed)
+
+Rules aren't in the on-disk index — they're read live from Mail via JXA.
+
+| Tool | Parameters | Notes |
+|---|---|---|
+| `list_rules` | — | read-only. Each rule's `name`, `enabled`, `all_conditions_must_be_met`, `conditions[]` (`rule_type`/`qualifier`/`expression`/`header`), and the action properties Mail sets (`shouldMoveMessage`+`moveMessage`, `markFlagged`/`markFlagIndex`, `colorMessage`, `markRead`, `deleteMessage`, `forwardMessage`/`forwardText`, `redirectMessage`, `replyText`, `runScript`, `playSound`, `stopEvaluatingRules`). Also `email://rules`. |
+| `enable_rule` / `disable_rule` | `name, dry_run=false` | toggles the rule's `enabled` flag. Blocked under `--read-only`; `dry_run` previews. |
+| `delete_rule` | `name, confirm=false, dry_run=false` | **always requires `confirm=true`** and is **not undoable** — a deleted rule cannot be recreated through Mail's scripting. Blocked under `--read-only`. |
+
+**No `create_rule`/`update_rule`.** Apple Mail's scripting dictionary cannot create or modify a
+rule's *conditions* — verified live against a real Mail.app: `make` on a `rule condition` raises
+"Can't make or move that element into that container", and setting conditions via a rule's
+`withProperties`/array assignment silently yields a rule with no conditions. A conditionless rule is
+useless (or dangerous), so rule creation is not offered rather than shipped broken. Create rules in
+Mail's UI; this server reads them and manages their lifecycle.
 
 ## Resources (`email://...`)
 

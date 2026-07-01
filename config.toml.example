@@ -28,7 +28,7 @@ trash = 5
 delete = 1
 
 [confirmation]
-require_confirm = ["permanent_delete", "empty_trash"]
+require_confirm = ["permanent_delete", "empty_trash", "delete_rule"]
 
 [embeddings]
 enabled = false            # optional hybrid/semantic search layer, off by default

@@ -235,6 +235,94 @@ function emptyTrash(args) {
   return { emptied: true, count: count };
 }
 
+// --- Mail rules -----------------------------------------------------------
+// Mail's scripting dictionary exposes rules read/write for lifecycle (enable/
+// disable/delete) but CANNOT create or modify rule *conditions* — `make` on a
+// `rule condition` raises "Can't make or move that element into that
+// container", so create/update of a functional rule is impossible via JXA.
+// Verified live against a real Mail.app. Hence: read + lifecycle only.
+
+function _ruleActionValue(fn, isMailbox) {
+  try {
+    var v = fn();
+    if (v === null || v === undefined) return null;
+    if (isMailbox) return v.name ? v.name() : null;
+    return v;
+  } catch (e) {
+    return null;
+  }
+}
+
+function _serializeRule(rule) {
+  var out = { name: rule.name(), enabled: false, allConditionsMustBeMet: false, conditions: [], actions: {} };
+  try { out.enabled = rule.enabled(); } catch (e) {}
+  try { out.allConditionsMustBeMet = rule.allConditionsMustBeMet(); } catch (e) {}
+  try {
+    var conds = rule.ruleConditions();
+    for (var i = 0; i < conds.length; i++) {
+      var c = conds[i];
+      out.conditions.push({
+        ruleType: _ruleActionValue(function () { return c.ruleType(); }, false),
+        qualifier: _ruleActionValue(function () { return c.qualifier(); }, false),
+        expression: _ruleActionValue(function () { return c.expression(); }, false),
+        header: _ruleActionValue(function () { return c.header(); }, false)
+      });
+    }
+  } catch (e) {}
+  var a = out.actions;
+  a.shouldMoveMessage = _ruleActionValue(function () { return rule.shouldMoveMessage(); }, false);
+  a.moveMessage = _ruleActionValue(function () { return rule.moveMessage(); }, true);
+  a.shouldCopyMessage = _ruleActionValue(function () { return rule.shouldCopyMessage(); }, false);
+  a.copyMessage = _ruleActionValue(function () { return rule.copyMessage(); }, true);
+  a.markFlagged = _ruleActionValue(function () { return rule.markFlagged(); }, false);
+  a.markFlagIndex = _ruleActionValue(function () { return rule.markFlagIndex(); }, false);
+  a.colorMessage = _ruleActionValue(function () { return rule.colorMessage(); }, false);
+  a.markRead = _ruleActionValue(function () { return rule.markRead(); }, false);
+  a.deleteMessage = _ruleActionValue(function () { return rule.deleteMessage(); }, false);
+  a.forwardMessage = _ruleActionValue(function () { return rule.forwardMessage(); }, false);
+  a.forwardText = _ruleActionValue(function () { return rule.forwardText(); }, false);
+  a.redirectMessage = _ruleActionValue(function () { return rule.redirectMessage(); }, false);
+  a.replyText = _ruleActionValue(function () { return rule.replyText(); }, false);
+  a.runScript = _ruleActionValue(function () { return rule.runScript(); }, false);
+  a.playSound = _ruleActionValue(function () { return rule.playSound(); }, false);
+  a.stopEvaluatingRules = _ruleActionValue(function () { return rule.stopEvaluatingRules(); }, false);
+  return out;
+}
+
+function listRules(args) {
+  var app = MailApp();
+  var rules = app.rules();
+  var out = [];
+  for (var i = 0; i < rules.length; i++) {
+    out.push(_serializeRule(rules[i]));
+  }
+  return { rules: out };
+}
+
+function _findRule(app, name) {
+  var rules = app.rules();
+  for (var i = 0; i < rules.length; i++) {
+    if (rules[i].name() === name) return rules[i];
+  }
+  return null;
+}
+
+function setRuleEnabled(args) {
+  var app = MailApp();
+  var rule = _findRule(app, args.name);
+  if (!rule) throw "rule not found: " + args.name;
+  rule.enabled = !!args.enabled;
+  return { name: rule.name(), enabled: rule.enabled() };
+}
+
+function deleteRule(args) {
+  var app = MailApp();
+  var rule = _findRule(app, args.name);
+  if (!rule) throw "rule not found: " + args.name;
+  app.delete(rule);
+  return { deleted: true, name: args.name };
+}
+
 function createMailbox(args) {
   var app = MailApp();
   var account = findAccount(app, args.account);

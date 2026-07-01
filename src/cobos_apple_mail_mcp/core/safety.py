@@ -38,6 +38,35 @@ def batch_limit_for(config: Config, operation_kind: str) -> int | None:
     return getattr(config.batch_limits, attr) if attr else None
 
 
+def gate_nonbatch(
+    config: Config,
+    operation: str,
+    *,
+    dry_run: bool = False,
+    confirm: bool = False,
+    requires_confirm: bool = False,
+    preview: dict | None = None,
+) -> dict | None:
+    """Safety gate for non-batch, non-message writes (e.g. rule lifecycle):
+    the same read-only / dry-run / confirm discipline as guard(), but without
+    the ResolvedMessage/AffectedMessage batch machinery that doesn't apply.
+
+    Returns the `preview` dict when `dry_run` (the caller returns it and
+    performs no mutation); raises `ReadOnlyMode` under --read-only or
+    `ConfirmationRequired` when confirmation is needed but absent; returns
+    `None` to signal "proceed with the mutation".
+    """
+    if config.server.read_only:
+        raise ReadOnlyMode(f"server is running --read-only; {operation!r} is disabled")
+    if dry_run:
+        return preview or {"dry_run": True, "operation": operation}
+    if requires_confirm and not confirm:
+        raise ConfirmationRequired(
+            f"{operation!r} requires confirm=true", preview=preview or {"operation": operation}
+        )
+    return None
+
+
 def guard(
     *,
     config: Config,
