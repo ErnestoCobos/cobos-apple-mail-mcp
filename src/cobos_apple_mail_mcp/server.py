@@ -292,6 +292,20 @@ def build_server(config: Config) -> FastMCP:
             )
         )
 
+    @mcp.tool
+    @_wrap_errors
+    def list_contacts(
+        query: str | None = None, account: str | None = None, limit: int = 25
+    ) -> list[dict]:
+        """Browse/search contacts, ranked by message volume. Counts mail both
+        received from and sent to each address. query substring-matches name
+        and address."""
+        return _dump(
+            knowledge_tools.list_contacts(
+                ctx.conn, query=query, account=ctx.default_account(account), limit=limit
+            )
+        )
+
     # ---------------------------------------------------------------
     # Write tools — every mutation resolves by canonical message_id
     # (core.resolver) and passes through core.safety.guard(); disabled

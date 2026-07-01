@@ -175,6 +175,11 @@ def build_parser() -> argparse.ArgumentParser:
     p_stats.add_argument("--account")
     p_stats.add_argument("--sender")
 
+    p_contacts = sub.add_parser("contacts")
+    p_contacts.add_argument("--query")
+    p_contacts.add_argument("--account")
+    p_contacts.add_argument("--limit", type=int, default=25)
+
     # --- write commands ---
 
     p_compose = sub.add_parser("compose")
@@ -519,6 +524,16 @@ def _main(argv: list[str] | None = None) -> int:
                 date_range_days=args.date_range_days,
                 account=args.account,
                 sender=args.sender,
+            )
+        )
+        return 0
+
+    if args.command == "contacts":
+        from cobos_apple_mail_mcp.tools import knowledge_tools
+
+        _print_json(
+            knowledge_tools.list_contacts(
+                conn, query=args.query, account=args.account, limit=args.limit
             )
         )
         return 0

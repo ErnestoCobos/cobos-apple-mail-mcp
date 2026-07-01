@@ -10,12 +10,13 @@ import sqlite3
 
 from cobos_apple_mail_mcp.core.models import (
     AwaitingReplyItem,
+    ContactSummary,
     InboxOverview,
     NeedsResponseItem,
     SenderCount,
     Statistics,
 )
-from cobos_apple_mail_mcp.knowledge import analytics, triage
+from cobos_apple_mail_mcp.knowledge import analytics, contacts, triage
 
 
 def get_inbox_overview(conn: sqlite3.Connection, *, account: str | None = None) -> InboxOverview:
@@ -55,3 +56,13 @@ def get_statistics(
     return analytics.get_statistics(
         conn, scope=scope, date_range_days=date_range_days, account=account, sender=sender
     )
+
+
+def list_contacts(
+    conn: sqlite3.Connection,
+    *,
+    query: str | None = None,
+    account: str | None = None,
+    limit: int = 25,
+) -> list[ContactSummary]:
+    return contacts.list_contacts(conn, query=query, account=account, limit=limit)

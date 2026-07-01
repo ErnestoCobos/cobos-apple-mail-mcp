@@ -18,6 +18,7 @@ tools — a single source of truth, never a parallel implementation.
 | `email://mailboxes/{account}` | `list[Mailbox]` |
 | `email://threads/{thread_id}` | `EmailThread` (JWZ-reconstructed) |
 | `email://message/{message_id}` | `EmailFull` |
+| `email://contacts` | `list[ContactSummary]` (browsable, bidirectional; top 100 by volume) |
 | `email://contacts/{address}` | `Contact` |
 | `email://inbox-summary` | `InboxOverview` |
 | `email://awaiting-reply` | `list[AwaitingReplyItem]` |

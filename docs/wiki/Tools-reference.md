@@ -39,6 +39,7 @@ and its CLI flag (CLI flags are kebab-case, e.g. `to_mailbox` → `--to-mailbox`
 | `get_needs_response` | `days_back=7, account?` | index |
 | `get_top_senders` | `account?, mailbox?, limit=10` | index |
 | `get_statistics` | `scope=account_overview\|sender_stats\|mailbox_breakdown, date_range_days=30, account?, sender?` | index |
+| `list_contacts` | `query?, account?, limit=25` | index. Browsable/searchable contact list, **bidirectional** (counts mail received from *and* sent to each address). Ranked by combined volume, or substring-filtered on name+address when `query` given. Returns `ContactSummary`. See [Threading and knowledge](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Threading-and-knowledge#contacts). |
 
 ## Write tools (`tools/write_tools.py`) — every batch op gated by `guard()`
 

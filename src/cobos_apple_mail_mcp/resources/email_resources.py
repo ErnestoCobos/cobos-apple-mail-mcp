@@ -58,6 +58,11 @@ def register_resources(mcp: FastMCP, ctx: ServerContext) -> None:
         """One email's full content, by canonical message_id."""
         return _dump_json(reading.get_email(ctx.conn, message_id))
 
+    @mcp.resource("email://contacts")
+    def contacts_list_resource() -> str:
+        """Browsable contact list, ranked by combined sent+received volume."""
+        return _dump_json(contacts.list_contacts(ctx.conn, limit=100))
+
     @mcp.resource("email://contacts/{address}")
     def contact_resource(address: str) -> str:
         """Derived contact profile: name, message counts, recent threads."""

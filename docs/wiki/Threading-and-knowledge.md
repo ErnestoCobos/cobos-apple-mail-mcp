@@ -118,5 +118,21 @@ aggregate SQL over `emails`.
 ## Contacts
 
 `knowledge/contacts.py::get_contact(address)` — message count, last-contact date, and the 5 most
-recent messages from an address, derived purely from the index (no integration with macOS
-Contacts/AddressBook — out of scope).
+recent messages **received from** an address, derived purely from the index (no integration with
+macOS Contacts/AddressBook — out of scope).
+
+`knowledge/contacts.py::list_contacts(query=None, account=None, limit=25)` — a browsable,
+searchable contact list. **Bidirectional by design**: it counts both mail received from an address
+(grouped `sender_addr`, using SQLite's well-defined "bare column beside `MAX()` comes from the
+max row" rule to pick each address's latest display name in one pass) *and* mail sent to it
+(recipients on `mailbox_role='sent'` rows). The received half is a single GROUP-BY; the sent half
+can't be — recipients are stored as JSON in `recipients_to`/`recipients_cc`, not a joinable column
+— so it's a bounded Python merge over sent rows (`email.utils.getaddresses` expands each recipient
+list), fine at personal-mailbox scale. The two halves merge on a lowercased address key, so
+`Dave@x.com` and `dave@x.com` collapse to one contact. A sender-only list was rejected because it
+silently omits people the user emails but who rarely reply — verified against a real mailbox where
+15 contacts had a non-zero sent count that a received-only list would have hidden. Ranked by
+combined volume, or substring-filtered on name+address when `query` is given. Returns
+`ContactSummary` (address, display_name, received_count, sent_count, total_count, last_contact) —
+deliberately without `Contact.recent_messages`, which is too heavy for a list projection. The
+single-contact `get_contact()` stays received-only.

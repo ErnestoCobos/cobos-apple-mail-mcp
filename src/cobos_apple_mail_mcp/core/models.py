@@ -244,6 +244,19 @@ class Contact(BaseModel):
     recent_messages: list[EmailSummary] = Field(default_factory=list)
 
 
+class ContactSummary(BaseModel):
+    """One row of the browsable, bidirectional contact list. Unlike Contact,
+    counts both mail received from and mail sent to the address, and omits
+    recent_messages (too heavy for a list projection)."""
+
+    address: str
+    display_name: str | None = None
+    received_count: int = 0
+    sent_count: int = 0
+    total_count: int = 0
+    last_contact: int | None = None
+
+
 # ---------------------------------------------------------------------------
 # Index build / status
 # ---------------------------------------------------------------------------
