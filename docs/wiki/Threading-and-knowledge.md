@@ -26,6 +26,11 @@ of most mail clients' thread reconstruction, run entirely against indexed `messa
    a normalized subject (Re:/Fwd: stripped) — for mail with missing or broken
    References/In-Reply-To headers. Deliberately restricted to roots only; merging deeper in the
    tree risks conflating unrelated threads that happen to share a subject.
+4. `_link()` refuses to attach a container as its own parent or ancestor
+   (`_creates_cycle()` walks the candidate parent chain checking for the child before linking) —
+   a guard against malformed/circular `References` data (real mail from misbehaving senders or
+   gateways can produce a header chain that references itself) turning the tree into an infinite
+   loop instead of just silently dropping the one bad link.
 
 `index_threads()` recomputes `thread_id`/`thread_root_id`/`thread_position` for the **whole**
 index on every build that has any change (not just touched threads) — at personal-mailbox scale

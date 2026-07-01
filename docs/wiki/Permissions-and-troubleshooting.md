@@ -21,6 +21,19 @@ last_verified: 2026-06-30
 actionable error rather than failing silently. If Full Disk Access is missing, reads
 automatically fall back to the JXA path (slower, but correct) rather than failing outright.
 
+### What else gets read, beyond `~/Library/Mail`
+
+Resolving human account display names (`list_accounts`, and the `account` field on every read
+tool) reads `~/Library/Accounts/Accounts4.sqlite` — macOS's system-wide Internet Accounts store,
+which also backs Calendar/Contacts/Messages account configuration, not just Mail (see
+[Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format#account-display-names)
+for why this second database is necessary — Mail's own on-disk data has no display-name mapping).
+It's opened read-only/immutable, the same discipline as the Envelope Index. No separate
+permission prompt appears for it: the Full Disk Access grant above already covers everything
+under `~/Library`, including this file. If it's ever missing, unreadable, or shaped unexpectedly,
+resolution fails silently per-account and that account's raw UUID is shown instead — this never
+blocks indexing or any other tool.
+
 ## Common errors
 
 | Error code | Likely cause | Fix |
