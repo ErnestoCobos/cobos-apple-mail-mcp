@@ -1,0 +1,26 @@
+name: Publish to PyPI
+
+# Publishes the package to PyPI on every GitHub Release, and can be run by hand
+# (workflow_dispatch) for a tag that predates this workflow. Uses PyPI Trusted
+# Publishing (OIDC) — there is NO API token stored anywhere; PyPI verifies the
+# GitHub identity directly. One-time setup on PyPI is documented in
+# docs/wiki/Development-and-contributing.md ("Publishing to PyPI").
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    permissions:
+      id-token: write # required for Trusted Publishing (OIDC); no token needed
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install uv
+        uses: astral-sh/setup-uv@v5
+      - name: Build sdist + wheel
+        run: uv build
+      - name: Publish to PyPI (Trusted Publishing)
+        uses: pypa/gh-action-pypi-publish@release/v1

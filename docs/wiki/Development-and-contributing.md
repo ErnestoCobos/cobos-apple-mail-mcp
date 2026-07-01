@@ -95,14 +95,34 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on macOS runners (this project'
 the documented test boundary both require macOS for the real-`osascript` and real-`sqlite-vec`
 tests to run, not just skip): `ruff check`, `pytest`, and `scripts/check_docs_sync.py`.
 
-## Release
+## Publishing to PyPI (Trusted Publishing — no API token)
+
+`.github/workflows/publish.yml` publishes to PyPI on every GitHub Release using PyPI **Trusted
+Publishing** (OIDC): PyPI verifies the GitHub Actions identity directly, so there is **no API token
+stored in the repo or anywhere else** — nothing to leak or rotate. The canonical MCP install
+(`uvx cobos-apple-mail-mcp serve`, `pipx install cobos-apple-mail-mcp`) pulls from here.
+
+**One-time setup** (done once by the project owner, all on the web, no token generated):
+
+1. On PyPI → *Your projects* → (or *Publishing* for a not-yet-existing project) → **Add a pending
+   publisher** with: PyPI project name `cobos-apple-mail-mcp`, owner `ErnestoCobos`, repository
+   `cobos-apple-mail-mcp`, workflow filename `publish.yml`.
+2. Cut a GitHub Release (or run the *Publish to PyPI* workflow via *Actions → Run workflow*). The
+   workflow builds the sdist+wheel and uploads them; PyPI accepts them because the OIDC identity
+   matches the pending publisher.
+
+After the first successful publish the pending publisher becomes a normal trusted publisher and
+every future release publishes automatically. Bump `version` in `pyproject.toml` (and
+`__init__.py`) before tagging.
+
+## Release (GitHub artifacts + wiki)
 
 ```bash
 make pyz                              # builds dist/apple-mail-mcp{,-full}.pyz
 shasum -a 256 dist/*.pyz > dist/SHA256SUMS.txt
 git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z
 gh release create vX.Y.Z dist/apple-mail-mcp.pyz dist/apple-mail-mcp-full.pyz dist/SHA256SUMS.txt \
-  --title "vX.Y.Z" --notes-file <path>
+  --title "vX.Y.Z" --notes-file <path>   # this triggers the PyPI publish workflow
 scripts/publish_wiki.sh               # syncs docs/wiki/ -> the GitHub wiki repo
 ```
 
