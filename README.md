@@ -22,6 +22,16 @@ get_inbox_overview                     →  ~ms, computed from a local index
 move_email + undo_last                 →  AppleScript, resolved by Message-ID, reversible
 ```
 
+**Install it in one command** (macOS, for Claude Desktop / Cowork):
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/ErnestoCobos/cobos-apple-mail-mcp/main/scripts/install-claude-desktop.sh)
+```
+
+Installs the CLI, builds the local index, and registers the server — backing up your config,
+merging in only the one entry. Other paths (`uvx` / `pipx` / `.pyz`, other clients, read-only) are
+in [Quick start](#quick-start-one-command) and [Install](#install).
+
 Full depth lives in the **[GitHub Wiki](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki)**
 (architecture, on-disk format, every tool's parameters, configuration reference, troubleshooting).
 This README is the quickstart and the pitch.
