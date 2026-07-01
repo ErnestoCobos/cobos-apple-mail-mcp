@@ -32,9 +32,12 @@ uv run ruff check src tests
   permission is needed, while still genuinely exercising the timeout/process-group-kill
   mechanics (not mocked).
 - `tests/test_vector_search.py` uses a deterministic `FakeEmbeddingBackend` (keyword-presence
-  vectors, no ML) against a **real** `sqlite-vec` extension (`pytest.importorskip("sqlite_vec")`
-  — skips gracefully if not installed; the `[dev]` extra includes it specifically so CI exercises
-  this path rather than always skipping).
+  vectors, no ML) against a **real** `sqlite-vec` extension. It runs whenever the interpreter's
+  `sqlite3` can load extensions (guarded by `tests/helpers.py::sqlite_vec_loadable()`), and skips
+  cleanly when it can't — sqlite-vec not installed, or a prebuilt Python whose `sqlite3` omits
+  `enable_load_extension`. GitHub's macOS `setup-python` is one such build, so these skip on CI and
+  are exercised on a real dev machine instead (`storage.database.try_load_sqlite_vec` degrades the
+  same way in production rather than raising). The `[dev]` extra installs `sqlite_vec`.
 - `tests/test_account_names.py` builds a synthetic, real-schema-shaped `Accounts4.sqlite` fixture
   (same pattern as the `.emlx` fixtures — construct the real on-disk format, don't mock the
   lookup) to test `read/account_names.py`'s `ZPARENTACCOUNT`-chain walk and cycle guard without

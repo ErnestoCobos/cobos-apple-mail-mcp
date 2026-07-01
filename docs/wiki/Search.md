@@ -156,6 +156,11 @@ Off by default (`config.embeddings.enabled = false`). When enabled:
 - Vectors are stored in a `sqlite-vec` `vec0` table (`emails_vec`), dimension matching the active
   backend — **a backend change invalidates previously-embedded rows** rather than mixing vectors
   from two different spaces (`read/vector_search.py::sync_vec_table()`).
+- `sqlite-vec` is a **loadable SQLite extension**, so it needs a Python whose `sqlite3` was built
+  with `enable_load_extension` support. Some prebuilt interpreters omit it (notably GitHub's macOS
+  `setup-python`); there, `storage.database.try_load_sqlite_vec()` returns `False` and semantic
+  search degrades gracefully — it never crashes, and keyword search is unaffected. Homebrew/
+  python.org/system macOS Pythons generally do support it.
 - `mode=hybrid` fuses BM25 candidates and vector-KNN candidates with **Reciprocal Rank Fusion**:
 
   ```

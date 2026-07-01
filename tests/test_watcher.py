@@ -26,7 +26,10 @@ def test_polling_fallback_indexes_new_message(tmp_path, monkeypatch):
 
 
 def test_watch_loop_runs_embedding_backfill_when_enabled(tmp_path, monkeypatch):
-    pytest.importorskip("sqlite_vec")
+    from tests.helpers import sqlite_vec_loadable
+
+    if not sqlite_vec_loadable():
+        pytest.skip("sqlite-vec not loadable on this interpreter")
 
     import cobos_apple_mail_mcp.read.watcher as watcher_mod
     from cobos_apple_mail_mcp.read.vector_search import EmbeddingBackend

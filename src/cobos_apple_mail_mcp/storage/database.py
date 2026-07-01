@@ -54,18 +54,27 @@ def open_envelope_index_readonly(envelope_index_path: str | Path) -> sqlite3.Con
 
 def try_load_sqlite_vec(conn: sqlite3.Connection) -> bool:
     """Best-effort load of the sqlite-vec extension. Returns False (never
-    raises) when the optional [semantic] dependency isn't installed, so
-    callers can degrade gracefully per CLAUDE.md packaging notes.
+    raises) when the optional [semantic] dependency isn't installed, *or* when
+    the running interpreter's sqlite3 was built without loadable-extension
+    support — some prebuilt Python distributions (notably the macOS builds
+    GitHub's setup-python ships) omit `Connection.enable_load_extension`
+    entirely, and calling it would raise `AttributeError`. Both cases must
+    degrade gracefully per CLAUDE.md packaging notes, not crash.
     """
     try:
         import sqlite_vec
     except ImportError:
         return False
-    conn.enable_load_extension(True)
+    if not hasattr(conn, "enable_load_extension"):
+        return False
     try:
-        sqlite_vec.load(conn)
-    finally:
-        conn.enable_load_extension(False)
+        conn.enable_load_extension(True)
+        try:
+            sqlite_vec.load(conn)
+        finally:
+            conn.enable_load_extension(False)
+    except (AttributeError, sqlite3.Error):
+        return False
     return True
 
 

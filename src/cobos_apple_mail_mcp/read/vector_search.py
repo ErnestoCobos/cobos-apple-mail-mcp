@@ -202,7 +202,9 @@ def sync_vec_table(conn: sqlite3.Connection, backend: EmbeddingBackend) -> None:
     """
     if not try_load_sqlite_vec(conn):
         raise RuntimeError(
-            "sqlite-vec extension is not installed; pip install 'cobos-apple-mail-mcp[semantic]'"
+            "sqlite-vec is unavailable: install it with "
+            "pip install 'cobos-apple-mail-mcp[semantic]', or run under a Python whose "
+            "sqlite3 supports loadable extensions (some prebuilt macOS builds do not)."
         )
     recorded = get_sync_state(conn, "embed_backend")
     current = f"{backend.name}:{backend.dimension}"

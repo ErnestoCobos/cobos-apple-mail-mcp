@@ -8,7 +8,12 @@ from __future__ import annotations
 
 import pytest
 
-pytest.importorskip("sqlite_vec")
+from tests.helpers import sqlite_vec_loadable
+
+if not sqlite_vec_loadable():
+    # sqlite-vec absent, or this interpreter's sqlite3 can't load extensions
+    # (e.g. GitHub's prebuilt macOS Python) — skip rather than fail.
+    pytest.skip("sqlite-vec not loadable on this interpreter", allow_module_level=True)
 
 from cobos_apple_mail_mcp.read.indexer import build_index
 from cobos_apple_mail_mcp.read.vector_search import (

@@ -7,12 +7,13 @@ on:
 
 jobs:
   test:
-    # macOS runners: the test boundary deliberately includes real osascript
-    # subprocess calls (tests/test_jxa_executor.py, never touching
-    # Application("Mail")) and a real sqlite-vec extension load
-    # (tests/test_vector_search.py) -- these need a real macOS environment
-    # to run for real rather than always skip. See
-    # docs/wiki/Development-and-contributing.md.
+    # macOS runners: the test boundary includes real osascript subprocess calls
+    # (tests/test_jxa_executor.py, never touching Application("Mail")), which
+    # need a real macOS environment. The sqlite-vec tests
+    # (tests/test_vector_search.py) run only where the interpreter's sqlite3
+    # supports loadable extensions; GitHub's prebuilt macOS setup-python omits
+    # enable_load_extension, so they skip here and are exercised on a real dev
+    # machine instead. See docs/wiki/Development-and-contributing.md.
     runs-on: macos-14
     strategy:
       matrix:

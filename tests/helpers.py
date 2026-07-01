@@ -10,6 +10,32 @@ from pathlib import Path
 from cobos_apple_mail_mcp.read.emlx_parser import FLAG_ANSWERED, FLAG_FLAGGED, FLAG_SEEN
 
 
+def sqlite_vec_loadable() -> bool:
+    """True only if sqlite-vec is importable AND this interpreter's sqlite3 can
+    actually load extensions. Prebuilt CI Pythons (GitHub's setup-python on
+    macOS) ship a sqlite3 without loadable-extension support, where sqlite_vec
+    is installed but unusable — those environments must skip the vec tests, not
+    fail them. Mirrors storage.database.try_load_sqlite_vec's guards.
+    """
+    import sqlite3
+
+    try:
+        import sqlite_vec
+    except ImportError:
+        return False
+    conn = sqlite3.connect(":memory:")
+    try:
+        if not hasattr(conn, "enable_load_extension"):
+            return False
+        conn.enable_load_extension(True)
+        sqlite_vec.load(conn)
+        return True
+    except (AttributeError, sqlite3.Error):
+        return False
+    finally:
+        conn.close()
+
+
 def build_emlx_bytes(
     *,
     message_id: str,
