@@ -83,6 +83,13 @@ opt out of the gate (see [Safety](https://github.com/ErnestoCobos/cobos-apple-ma
 | `backend` | `"apple_nl"` | `apple_nl` (Apple NaturalLanguage via PyObjC, no download) or `minilm` (ONNX, requires `[semantic-minilm]` + a local model dir) |
 | `model` | unset | only used when `backend = "minilm"` — a local directory containing `model.onnx` + `tokenizer.json` |
 
+## `[attachments]`
+
+| Key | Default | Meaning |
+|---|---|---|
+| `extract_text` | `false` | extract PDF/DOCX text so `search(scope=attachments)` matches content, not just filenames (requires the `[attachments]` extra; backfill via `apple-mail-mcp index extract-attachments` or a couple of batches per `--watch` tick) |
+| `max_file_size_mb` | `25` | skip attachments larger than this to bound per-file extraction cost |
+
 ## `[timeouts]`
 
 The never-hang knobs — every external call is bounded by one of these.

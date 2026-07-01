@@ -88,6 +88,15 @@ class TimeoutsSection(BaseModel):
     http_sec: float = 15.0  # bound for the RFC-8058 one-click unsubscribe POST
 
 
+class AttachmentsSection(BaseModel):
+    """Off by default. When enabled (and the [attachments] extra is installed),
+    a low-priority backfill extracts PDF/DOCX text so search(scope=attachments)
+    matches attachment content, not just filenames. Off adds no dependency."""
+
+    extract_text: bool = False
+    max_file_size_mb: int = 25  # skip attachments larger than this (extraction cost)
+
+
 class Config(BaseModel):
     config_version: int = 1
     defaults: DefaultsSection = Field(default_factory=DefaultsSection)
@@ -96,6 +105,7 @@ class Config(BaseModel):
     batch_limits: BatchLimitsSection = Field(default_factory=BatchLimitsSection)
     confirmation: ConfirmationSection = Field(default_factory=ConfirmationSection)
     embeddings: EmbeddingsSection = Field(default_factory=EmbeddingsSection)
+    attachments: AttachmentsSection = Field(default_factory=AttachmentsSection)
     timeouts: TimeoutsSection = Field(default_factory=TimeoutsSection)
 
 
@@ -225,9 +235,16 @@ enabled = false            # optional hybrid/semantic search layer, off by defau
 backend = "apple_nl"       # "apple_nl" (built into macOS, no download) | "minilm"
 # model = "all-MiniLM-L6-v2"  # only used when backend = "minilm"
 
+[attachments]
+extract_text = false       # extract PDF/DOCX text so search(scope=attachments) matches
+                           # content, not just filenames (needs the [attachments] extra;
+                           # run `apple-mail-mcp index extract-attachments` to backfill)
+max_file_size_mb = 25      # skip attachments larger than this
+
 [timeouts]
 # The never-hang knobs: every external call is bounded by one of these.
 jxa_call_sec = 20.0
 broad_scan_sec = 30.0
 mail_launch_sec = 15.0
+http_sec = 15.0            # bound for the one-click unsubscribe POST
 '''

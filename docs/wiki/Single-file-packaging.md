@@ -109,10 +109,14 @@ Register with an MCP client using `"command": "python3.12", "args": ["/absolute/
    `__file__`-relative path: `write/scripts/mail_core.js`, every `skills/<name>/recipe.yaml` +
    `prompt.md`, and `config.toml.example`. See `write/jxa_executor.py::_read_script()` and
    `skills/loader.py::_skills_root()`.
-2. **Every optional native dependency is imported lazily and guarded**: `watchfiles`,
-   `sqlite-vec`, `pyobjc`/`NaturalLanguage`, `onnxruntime`. The core `.pyz` runs without any of
-   them installed, degrading each feature gracefully (see [Search](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Search) and
+2. **Every optional dependency is imported lazily and guarded**: `watchfiles`, `sqlite-vec`,
+   `pyobjc`/`NaturalLanguage`, `onnxruntime`, and `pypdf` (the `[attachments]` extra). The core
+   `.pyz` runs without any of them installed, degrading each feature gracefully (see
+   [Search](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Search) and
    [Indexing and watch](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Indexing-and-watch) for what each degrades to).
+   Note the attachment feature deliberately uses `pypdf` (pure-Python) for PDF and stdlib
+   `zipfile`+`ElementTree` for DOCX, rather than `python-docx` — the latter needs the compiled
+   `lxml`, which would reintroduce the ABI-pinning problem the `.pyz` works hard to avoid.
 3. **The `sqlite-vec` loadable extension** is loaded via the package's own
    `sqlite_vec.load(conn)` API (`storage/database.py::try_load_sqlite_vec()`), which resolves its
    bundled binary path itself — correct under both a normal install and a shiv-extracted run,

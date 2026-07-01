@@ -36,6 +36,12 @@ dependencies = [
 watch = ["watchfiles>=1.0"]
 semantic = ["sqlite-vec>=0.1.6", "pyobjc-framework-NaturalLanguage>=10.3; sys_platform == 'darwin'"]
 semantic-minilm = ["onnxruntime>=1.18", "tokenizers>=0.20", "numpy>=1.26"]
+# PDF text extraction. pypdf is pure-Python (its `crypto` extra pulls
+# cryptography, but we don't need it — encrypted PDFs simply skip). DOCX needs
+# no dependency at all: read/attachment_extract.py parses it with stdlib
+# zipfile + ElementTree, deliberately avoiding python-docx (which requires the
+# compiled lxml and would break the single-file .pyz story).
+attachments = ["pypdf>=4.0"]
 dev = [
     "pytest>=8.0",
     "pytest-cov>=6.0",
@@ -52,8 +58,10 @@ dev = [
     # always skipping it; never a transitive dependency of the published
     # package.
     "pyobjc-framework-NaturalLanguage>=10.3; sys_platform == 'darwin'",
+    # So CI exercises the PDF path in tests/test_attachment_extract.py for real.
+    "pypdf>=4.0",
 ]
-full = ["cobos-apple-mail-mcp[watch,semantic]"]
+full = ["cobos-apple-mail-mcp[watch,semantic,attachments]"]
 
 [project.urls]
 Homepage = "https://github.com/ErnestoCobos/cobos-apple-mail-mcp"

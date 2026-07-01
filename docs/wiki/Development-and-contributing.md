@@ -40,6 +40,13 @@ uv run ruff check src tests
   lookup) to test `read/account_names.py`'s `ZPARENTACCOUNT`-chain walk and cycle guard without
   depending on whatever's actually configured on the machine running the suite;
   `read/indexer.py::build_index()` takes an `accounts_db_path` override for the same reason.
+- `tests/test_attachment_extract.py` uses `tests/helpers.py::make_test_pdf()` /
+  `make_test_docx()` (real minimal PDF/DOCX bytes pypdf and the stdlib parser actually read) plus
+  `write_message_with_attachment()` (a real multipart `.emlx`), so the extract → FTS →
+  `scope=attachments` path is exercised end-to-end against genuine file formats, and a corrupt
+  fixture proves it degrades to "skipped" rather than crashing the build. `pytest.importorskip`
+  skips the module cleanly when the `[attachments]` extra isn't installed; the `[dev]` extra
+  includes `pypdf` so CI runs it for real.
 
 The only things this suite cannot verify without a real, fully-configured Mac: the actual
 `write/scripts/mail_core.js` JXA against a live Mail.app (compose/reply/forward/move/trash/

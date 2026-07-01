@@ -112,6 +112,9 @@ build` — no separate incremental-update code path to keep in sync. Each tick:
 - If `config.embeddings.enabled`, drains a couple of small batches of the embedding backfill
   queue at low priority (`read/vector_search.py::embed_backfill(max_batches=2)`) — bounded so it
   never blocks the indexer from reacting to new mail.
+- If `config.attachments.extract_text`, drains a couple of small batches of the attachment-text
+  extraction queue the same way (`read/attachment_extract.py::extract_backfill(max_batches=2)`) —
+  PDF/DOCX extraction is slow, so it's bounded per tick just like embeddings.
 - Records `sync_state["last_watch_tick"]`.
 
 If `watchfiles` isn't installed (the `[watch]` extra), the loop **degrades to periodic polling**
@@ -132,10 +135,15 @@ change, or if the last build/watch tick is older than `config.index.staleness_ho
 ## What a reindex preserves vs. re-derives
 
 Almost every `emails` column is re-derived from the `.emlx` on each reindex (the UPSERT's `ON
-CONFLICT DO UPDATE` refreshes them). The one deliberate exception is **`flag_color`**: it is
-omitted from the `ON CONFLICT` update, so a reindex of an already-colored message keeps its color
-instead of resetting it to `NULL`. That's because `flag_color` has no reliable on-disk source — it
-is only ever set by this server's own `set_flag_color` write (an optimistic index update), never
-read back from disk (see
-[Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format#flag-colors)).
-Freshly-parsed rows start `flag_color = NULL`.
+CONFLICT DO UPDATE` refreshes them). The deliberate exceptions — columns the UPSERT omits from its
+`ON CONFLICT` update, so a reindex of an existing message preserves them:
+
+- **`flag_color`** — has no reliable on-disk source; only ever set by this server's own
+  `set_flag_color` write (an optimistic index update), never read back from disk (see
+  [Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format#flag-colors)).
+- **`attachment_text`** / **`attachment_extract_state`** — populated by the separate, slow
+  attachment-text backfill (see [Search](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Search#attachment-content-search-optional-attachments-extra));
+  a normal reindex mustn't wipe the extracted text or re-queue the (expensive) extraction.
+
+Freshly-parsed *new* rows start `flag_color = NULL`, `attachment_text = NULL`, and
+`attachment_extract_state = 0` (so the backfill picks them up).

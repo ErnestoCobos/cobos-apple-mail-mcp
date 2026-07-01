@@ -35,8 +35,15 @@ enabled = false            # optional hybrid/semantic search layer, off by defau
 backend = "apple_nl"       # "apple_nl" (built into macOS, no download) | "minilm"
 # model = "all-MiniLM-L6-v2"  # only used when backend = "minilm"
 
+[attachments]
+extract_text = false       # extract PDF/DOCX text so search(scope=attachments) matches
+                           # content, not just filenames (needs the [attachments] extra;
+                           # run `apple-mail-mcp index extract-attachments` to backfill)
+max_file_size_mb = 25      # skip attachments larger than this
+
 [timeouts]
 # The never-hang knobs: every external call is bounded by one of these.
 jxa_call_sec = 20.0
 broad_scan_sec = 30.0
 mail_launch_sec = 15.0
+http_sec = 15.0            # bound for the one-click unsubscribe POST

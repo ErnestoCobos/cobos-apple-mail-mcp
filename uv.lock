@@ -279,8 +279,12 @@ dependencies = [
 ]
 
 [package.optional-dependencies]
+attachments = [
+    { name = "pypdf" },
+]
 dev = [
     { name = "pyobjc-framework-naturallanguage", marker = "sys_platform == 'darwin'" },
+    { name = "pypdf" },
     { name = "pytest" },
     { name = "pytest-asyncio" },
     { name = "pytest-cov" },
@@ -290,6 +294,7 @@ dev = [
 ]
 full = [
     { name = "pyobjc-framework-naturallanguage", marker = "sys_platform == 'darwin'" },
+    { name = "pypdf" },
     { name = "sqlite-vec" },
     { name = "watchfiles" },
 ]
@@ -311,7 +316,7 @@ watch = [
 
 [package.metadata]
 requires-dist = [
-    { name = "cobos-apple-mail-mcp", extras = ["watch", "semantic"], marker = "extra == 'full'" },
+    { name = "cobos-apple-mail-mcp", extras = ["watch", "semantic", "attachments"], marker = "extra == 'full'" },
     { name = "fastmcp", specifier = ">=3.1" },
     { name = "numpy", marker = "extra == 'semantic-minilm'", specifier = ">=1.26" },
     { name = "onnxruntime", marker = "extra == 'semantic-minilm'", specifier = ">=1.18" },
@@ -319,6 +324,8 @@ requires-dist = [
     { name = "pydantic-settings", specifier = ">=2.4" },
     { name = "pyobjc-framework-naturallanguage", marker = "sys_platform == 'darwin' and extra == 'dev'", specifier = ">=10.3" },
     { name = "pyobjc-framework-naturallanguage", marker = "sys_platform == 'darwin' and extra == 'semantic'", specifier = ">=10.3" },
+    { name = "pypdf", marker = "extra == 'attachments'", specifier = ">=4.0" },
+    { name = "pypdf", marker = "extra == 'dev'", specifier = ">=4.0" },
     { name = "pytest", marker = "extra == 'dev'", specifier = ">=8.0" },
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.24" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=6.0" },
@@ -331,7 +338,7 @@ requires-dist = [
     { name = "tokenizers", marker = "extra == 'semantic-minilm'", specifier = ">=0.20" },
     { name = "watchfiles", marker = "extra == 'watch'", specifier = ">=1.0" },
 ]
-provides-extras = ["watch", "semantic", "semantic-minilm", "dev", "full"]
+provides-extras = ["watch", "semantic", "semantic-minilm", "attachments", "dev", "full"]
 
 [[package]]
 name = "colorama"
@@ -1587,7 +1594,7 @@ name = "pyobjc-framework-cocoa"
 version = "12.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
+    { name = "pyobjc-core", marker = "python_full_version < '3.12' or sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/51/34/fbe38a204643aa4e1b91391cdce07a34da565a69171ebcad08de7438a556/pyobjc_framework_cocoa-12.2.1.tar.gz", hash = "sha256:b94b37fe5730e5ae1fb0052912cd174e6ec329b0bfba4a012ae5db1014b5864b", size = 3125751, upload-time = "2026-06-19T16:20:05.159Z" }
 wheels = [
@@ -1607,12 +1614,24 @@ name = "pyobjc-framework-naturallanguage"
 version = "12.2.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
-    { name = "pyobjc-core" },
-    { name = "pyobjc-framework-cocoa" },
+    { name = "pyobjc-core", marker = "python_full_version < '3.12' or sys_platform != 'win32'" },
+    { name = "pyobjc-framework-cocoa", marker = "python_full_version < '3.12' or sys_platform != 'win32'" },
 ]
 sdist = { url = "https://files.pythonhosted.org/packages/ba/12/de013ac3cdbdb3cc616dd373399df4eb34b4459f668456d81f7062bd49c4/pyobjc_framework_naturallanguage-12.2.1.tar.gz", hash = "sha256:fa2d9c7040dcbbe4c7bc83ddfb9e3da20edb49824de8c78d3574aec7065c4043", size = 27243, upload-time = "2026-06-19T16:21:15.105Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/a6/5c/3c0692cc72de5b9cc6e55d262df6630f43040374eb7454382473067d3379/pyobjc_framework_naturallanguage-12.2.1-py2.py3-none-any.whl", hash = "sha256:5eed3750f7cbd6a9584f2b9942c4b26b7134ed15dc044815ac79841403048be9", size = 5460, upload-time = "2026-06-19T16:14:49.857Z" },
+]
+
+[[package]]
+name = "pypdf"
+version = "6.14.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "typing-extensions", marker = "python_full_version < '3.11'" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/03/72/7dfd5ff1c9c37de97a731701f51af091325f123d9d4270361c9c69e4431f/pypdf-6.14.2.tar.gz", hash = "sha256:7873f502fe4385e79539b21d872392dc0c4e3714327c15881cbc7fbfd1f95b25", size = 6491182, upload-time = "2026-06-23T14:18:30.859Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/49/e6/136aa8993a2ae7214e0b0ef2edaa0d2e08d1d4e4982635b08a835ff31ec8/pypdf-6.14.2-py3-none-any.whl", hash = "sha256:3f07891af76dc002657e04993ab9b4de81de29f9013b9761d0b7968bff12e946", size = 349514, upload-time = "2026-06-23T14:18:28.867Z" },
 ]
 
 [[package]]

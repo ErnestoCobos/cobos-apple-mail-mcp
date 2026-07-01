@@ -90,6 +90,16 @@ def run_watch_loop(
             except Exception:  # noqa: BLE001 - embedding failures must not kill the watch loop
                 logger.exception("embedding backfill failed this tick; will retry next tick")
 
+        if cfg.attachments.extract_text:
+            # Same low-priority discipline as embeddings — PDF/DOCX extraction
+            # is slow, so a couple of small batches per tick, never blocking.
+            from cobos_apple_mail_mcp.read.attachment_extract import extract_backfill
+
+            try:
+                extract_backfill(conn, cfg, max_batches=2)
+            except Exception:  # noqa: BLE001 - extraction failures must not kill the watch loop
+                logger.exception("attachment extraction failed this tick; will retry next tick")
+
     iterations = 0
 
     if has_watchfiles():

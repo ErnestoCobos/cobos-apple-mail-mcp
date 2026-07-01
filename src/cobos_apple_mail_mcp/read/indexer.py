@@ -355,7 +355,8 @@ def _rebuild_fts_index(conn: sqlite3.Connection) -> None:
         INSERT INTO emails_fts(rowid, subject, sender, recipients, body, attachments)
         SELECT id, subject,
                coalesce(sender_name,'')||' '||coalesce(sender_addr,''),
-               recipients_all, body_plain, attachment_names
+               recipients_all, body_plain,
+               coalesce(attachment_names,'')||' '||coalesce(attachment_text,'')
         FROM emails
         """
     )

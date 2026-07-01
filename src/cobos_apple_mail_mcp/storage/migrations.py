@@ -33,12 +33,13 @@ CREATE VIRTUAL TABLE IF NOT EXISTS emails_fts USING fts5(
 
 # Public so read/indexer.py can re-issue these (idempotent CREATE TRIGGER IF
 # NOT EXISTS) after a full-build pass that temporarily dropped them.
-FTS_TRIGGERS_SQL = """
+def _fts_triggers_sql(attachments_expr: str) -> str:
+    return f"""
 CREATE TRIGGER IF NOT EXISTS emails_ai AFTER INSERT ON emails BEGIN
   INSERT INTO emails_fts(rowid, subject, sender, recipients, body, attachments)
   VALUES (new.id, new.subject,
           coalesce(new.sender_name,'')||' '||coalesce(new.sender_addr,''),
-          new.recipients_all, new.body_plain, new.attachment_names);
+          new.recipients_all, new.body_plain, {attachments_expr});
 END;
 
 CREATE TRIGGER IF NOT EXISTS emails_ad AFTER DELETE ON emails BEGIN
@@ -50,9 +51,26 @@ CREATE TRIGGER IF NOT EXISTS emails_au AFTER UPDATE ON emails BEGIN
   INSERT INTO emails_fts(rowid, subject, sender, recipients, body, attachments)
   VALUES (new.id, new.subject,
           coalesce(new.sender_name,'')||' '||coalesce(new.sender_addr,''),
-          new.recipients_all, new.body_plain, new.attachment_names);
+          new.recipients_all, new.body_plain, {attachments_expr});
 END;
 """
+
+
+# The original (schema v1) triggers indexed attachment filenames only. Kept as
+# the literal migration-1 definition so a brand-new DB's migration 1 doesn't
+# reference the attachment_text column that migration 3 adds.
+_FTS_TRIGGERS_V1_SQL = _fts_triggers_sql("new.attachment_names")
+
+# Current triggers (schema v3+): the FTS `attachments` column indexes filenames
+# AND, once the optional [attachments] extract backfill has run, the extracted
+# PDF/DOCX text (attachment_text) — so `search(scope=attachments)` matches
+# content, not just names. attachment_text is NULL until the backfill fills it
+# (extraction is too slow to run inline); that UPDATE then fires emails_au and
+# re-indexes the row with the text folded in. Public so read/indexer.py can
+# re-issue these after a full-build pass that temporarily dropped them.
+FTS_TRIGGERS_SQL = _fts_triggers_sql(
+    "coalesce(new.attachment_names,'')||' '||coalesce(new.attachment_text,'')"
+)
 
 _MIGRATION_001_TEMPLATE = """
 CREATE TABLE IF NOT EXISTS schema_version (version INTEGER NOT NULL);
@@ -168,9 +186,12 @@ CREATE TABLE IF NOT EXISTS resolve_cache (
 );
 """
 
+# Migration 1 gets the v1 (names-only) triggers on purpose — the current
+# FTS_TRIGGERS_SQL references attachment_text, which doesn't exist until
+# migration 3 adds it; migration 3 then swaps in the current triggers.
 _MIGRATION_001 = _MIGRATION_001_TEMPLATE.replace(
     "{{EMAILS_FTS_DDL}}", EMAILS_FTS_DDL
-).replace("{{FTS_TRIGGERS_SQL}}", FTS_TRIGGERS_SQL)
+).replace("{{FTS_TRIGGERS_SQL}}", _FTS_TRIGGERS_V1_SQL)
 
 # flag_color: Apple Mail's flagIndex (0-6, one of seven colored flags), NULL
 # when unflagged. Populated from the Envelope Index's flag_color column at
@@ -180,9 +201,25 @@ ALTER TABLE emails ADD COLUMN flag_color INTEGER;
 CREATE INDEX IF NOT EXISTS idx_emails_flagcolor ON emails(flag_color) WHERE flag_color IS NOT NULL;
 """
 
+# attachment_text: extracted PDF/DOCX text for the optional [attachments]
+# content-search feature; attachment_extract_state tracks the backfill
+# (0=pending, 2=done, 3=skipped). Swaps the FTS triggers to fold attachment_text
+# into the `attachments` column so scope=attachments searches content, not just
+# names (see read/attachment_extract.py, read/search.py).
+_MIGRATION_003 = f"""
+ALTER TABLE emails ADD COLUMN attachment_text TEXT;
+ALTER TABLE emails ADD COLUMN attachment_extract_state INTEGER NOT NULL DEFAULT 0;
+CREATE INDEX IF NOT EXISTS idx_emails_extract
+  ON emails(attachment_extract_state) WHERE attachment_extract_state = 0;
+DROP TRIGGER IF EXISTS emails_ai;
+DROP TRIGGER IF EXISTS emails_au;
+{FTS_TRIGGERS_SQL}
+"""
+
 MIGRATIONS: list[tuple[int, str]] = [
     (1, _MIGRATION_001),
     (2, _MIGRATION_002),
+    (3, _MIGRATION_003),
 ]
 
 

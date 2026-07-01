@@ -115,6 +115,34 @@ falls back to it automatically when keyword search returns zero hits and the que
 just turned on, no rebuild run), `TrigramBackend.search()` catches the resulting
 `sqlite3.OperationalError` and returns no results rather than crashing.
 
+## Attachment content search (optional `[attachments]` extra)
+
+By default the FTS `attachments` column indexes attachment **filenames** only, so
+`search(scope=attachments)` matched names but not the text *inside* a PDF/DOCX — a query for
+something only ever written in an attached document returned nothing.
+
+With `config.attachments.extract_text = true` (and the `[attachments]` extra installed), a
+low-priority backfill (`read/attachment_extract.py::extract_backfill`, run via `apple-mail-mcp
+index extract-attachments` or drained a couple of batches per `--watch` tick, exactly like the
+embedding backfill) extracts PDF/DOCX text into `emails.attachment_text`. The FTS `attachments`
+column is defined as `attachment_names || ' ' || attachment_text`, so that content becomes part of
+`scope=attachments` — the `UPDATE` that fills `attachment_text` fires the `emails_au` trigger,
+which re-indexes the row. `attachment_extract_state` (0=pending, 2=done, 3=skipped) tracks the
+backfill, mirroring `embed_state`.
+
+- **PDF** via `pypdf` (pure-Python; its `crypto` extra isn't pulled — trivially-encrypted PDFs are
+  attempted with an empty password, others skip).
+- **DOCX** via stdlib `zipfile` + `ElementTree` (a `.docx` is a zip whose `word/document.xml`
+  holds the text as `<w:t>` runs) — **no dependency**, deliberately avoiding `python-docx` because
+  it requires the compiled `lxml`, which would break the single-file `.pyz`.
+- Any corrupt/encrypted/oversized/non-PDF-DOCX attachment degrades to "skipped", never crashing
+  the build (the same discipline as the malformed-header sanitization). `config.attachments.
+  max_file_size_mb` (default 25) caps per-file cost.
+- **Verified against a real mailbox**: `search "purchase" --scope attachments` found GitHub
+  payment-receipt PDFs where "purchase" appears only inside the PDF, not the subject or body. See
+  [Performance & benchmarks](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Performance-and-benchmarks)
+  for the measured extraction cost.
+
 ## Hybrid / semantic search (optional `[semantic]` extra)
 
 Off by default (`config.embeddings.enabled = false`). When enabled:

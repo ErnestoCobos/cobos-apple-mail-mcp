@@ -35,6 +35,15 @@ still a synthetic-only or extrapolated number.
 - `list_accounts`/`account` fields on every read tool: resolved to real human display names
   ("Account-A", "Account-F", etc.) via `read/account_names.py`, verified against all 7 real
   accounts on this mailbox — see [Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format#account-display-names).
+- **Attachment text extraction** (optional `[attachments]` extra): a bounded backfill over 100
+  real attachment-bearing messages took **3.15s — ~31.5 ms/message** on this mailbox (average
+  includes fast rejection of the many `.pdf`-named attachments that aren't real PDFs; 26 of the 100
+  yielded extractable PDF/DOCX text). This is meaningfully slower per message than the ~3.2 ms/msg
+  headline index build, which is exactly why extraction is a separate, explicitly-triggered
+  low-priority backfill (`index extract-attachments` / a couple of batches per `--watch` tick),
+  **not** part of every build. The mailbox has 6,665 attachment-bearing messages (2,193 with a
+  PDF/DOCX name), so a full first extraction is a one-time cost on the order of a few minutes,
+  after which it's incremental.
 
 ### Measured (synthetic fixtures, low message counts)
 

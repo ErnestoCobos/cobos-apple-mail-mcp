@@ -77,6 +77,9 @@ def build_parser() -> argparse.ArgumentParser:
     index_sub.add_parser("rebuild")
     p_index_status = index_sub.add_parser("status")
     p_index_status.add_argument("--verbose", action="store_true")
+    index_sub.add_parser(
+        "extract-attachments", help="backfill PDF/DOCX attachment text for content search"
+    )
 
     sub.add_parser("watch", help="run the incremental indexer in the foreground")
 
@@ -412,6 +415,11 @@ def _main(argv: list[str] | None = None) -> int:
         elif args.index_command == "status":
             status = get_index_status(conn, mail_dir, staleness_hours=cfg.index.staleness_hours)
             _print_json(status)
+        elif args.index_command == "extract-attachments":
+            from cobos_apple_mail_mcp.read.attachment_extract import extract_backfill
+
+            count = extract_backfill(conn, cfg)
+            _print_json({"extracted": count})
         return 0
 
     if args.command == "watch":
