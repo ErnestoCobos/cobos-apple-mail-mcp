@@ -109,6 +109,26 @@ multi-account mailbox for the first time — years of varied real-world mail hit
 cases synthetic test fixtures never do. `read/indexer.py::_flush_batch()` adds a second layer of
 defense (see [Indexing and watch](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Indexing-and-watch)) in case anything still slips through.
 
+## Flag colors
+
+Apple Mail's seven colored flags are exposed via JXA as `message.flagIndex` (0-6, `-1` when
+unflagged). `core/flags.py` maps those to color names — index 0=red confirmed empirically (a real
+rule's `markFlagIndex=0` paired with `colorMessage="red"`), index 3=green confirmed by a live
+set/cross-process-read round-trip against a real message.
+
+**There is no reliable on-disk source for the per-flag color.** This was tested directly, not
+assumed: setting a real message's `flagIndex` to each of 0-6 via JXA and reading the Envelope
+Index's `flag_color` column back each time returned **1 every time** — the column is effectively a
+flagged-boolean, not the flagIndex. (Immutable reads also lag live changes, since Mail buffers them
+in the `-wal` before checkpointing.) So `flag_color` in this project's index is **only** populated
+by our own `set_flag_color` write, which stores the correct `flagIndex` via an optimistic index
+update (`write/organize.py::update_email_status`), and is **preserved across reindex** — the UPSERT
+in `read/indexer.py` deliberately omits `flag_color` from its `ON CONFLICT` update, and new/parsed
+rows start `NULL`. The honest consequence: colors set directly in the Mail.app UI are not
+color-searchable (there's no trustworthy disk value to read); colors set through this server's tool
+are. `set_flag_color` is undoable (the prior color is journaled) — see
+[Safety, confirmation & undo](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Safety-confirmation-and-undo).
+
 ## The identity bridge: ROWID, Message-ID, and Mail's internal id
 
 ```mermaid

@@ -14,6 +14,7 @@ import sqlite3
 import time
 from abc import ABC, abstractmethod
 
+from cobos_apple_mail_mcp.core.flags import color_to_index, index_to_color
 from cobos_apple_mail_mcp.core.models import (
     MessageRefModel,
     SearchHit,
@@ -50,6 +51,7 @@ class SearchBackend(ABC):
         after: int | None = None,
         unread_only: bool = False,
         flagged_only: bool = False,
+        flag_color: str | None = None,
         has_attachments: bool | None = None,
         limit: int = 25,
         offset: int = 0,
@@ -76,6 +78,7 @@ def summary_to_hit(
         account=summary.account,
         is_read=summary.is_read,
         is_flagged=summary.is_flagged,
+        flag_color=summary.flag_color,
         attachment_count=summary.attachment_count,
         snippet_html=snippet_html or summary.snippet,
         thread_id=thread_id,
@@ -84,6 +87,10 @@ def summary_to_hit(
 
 def _row_to_hit(row: sqlite3.Row) -> SearchHit:
     account = row["account_name"] or row["account_uuid"]
+    try:
+        flag_color = index_to_color(row["flag_color"])
+    except (IndexError, KeyError):
+        flag_color = None
     return SearchHit(
         message_ref=MessageRefModel(
             message_id=row["message_id"], account=account, mailbox=row["mailbox_name"]
@@ -97,6 +104,7 @@ def _row_to_hit(row: sqlite3.Row) -> SearchHit:
         account=account,
         is_read=bool(row["flag_read"]),
         is_flagged=bool(row["flag_flagged"]),
+        flag_color=flag_color,
         attachment_count=row["attachment_count"],
         snippet_html=row["snip"],
         thread_id=row["thread_id"],
@@ -118,6 +126,7 @@ class FTS5Backend(SearchBackend):
         after: int | None = None,
         unread_only: bool = False,
         flagged_only: bool = False,
+        flag_color: str | None = None,
         has_attachments: bool | None = None,
         limit: int = 25,
         offset: int = 0,
@@ -148,6 +157,9 @@ class FTS5Backend(SearchBackend):
             where.append("e.flag_read = 0")
         if flagged_only:
             where.append("e.flag_flagged = 1")
+        if flag_color:
+            where.append("e.flag_color = :flag_color")
+            params["flag_color"] = color_to_index(flag_color)
         if has_attachments is True:
             where.append("e.attachment_count > 0")
         elif has_attachments is False:

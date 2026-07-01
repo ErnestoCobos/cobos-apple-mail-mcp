@@ -8,8 +8,18 @@ from __future__ import annotations
 import json
 import sqlite3
 
+from cobos_apple_mail_mcp.core.flags import index_to_color
 from cobos_apple_mail_mcp.core.models import Attachment, EmailFull, EmailSummary, MessageRefModel
 from cobos_apple_mail_mcp.read.emlx_parser import ParsedEmlx
+
+
+def _row_flag_color(row: sqlite3.Row) -> str | None:
+    # flag_color was added in schema migration #2; a row from an older query
+    # shape (or a synthetic test row) may not carry the column at all.
+    try:
+        return index_to_color(row["flag_color"])
+    except (IndexError, KeyError):
+        return None
 
 
 def row_to_summary(row: sqlite3.Row) -> EmailSummary:
@@ -27,6 +37,7 @@ def row_to_summary(row: sqlite3.Row) -> EmailSummary:
         is_read=bool(row["flag_read"]),
         is_flagged=bool(row["flag_flagged"]),
         is_answered=bool(row["flag_answered"]),
+        flag_color=_row_flag_color(row),
         attachment_count=row["attachment_count"],
         snippet=row["snippet"],
         mailbox=row["mailbox_name"],

@@ -21,7 +21,7 @@ from cobos_apple_mail_mcp.write.jxa_executor import JXAExecutor
 
 MAX_RETAINED_BATCHES = 500
 
-_UNDOABLE_OPS = {"move", "trash", "mark_read", "mark_unread", "flag", "unflag"}
+_UNDOABLE_OPS = {"move", "trash", "mark_read", "mark_unread", "flag", "unflag", "set_flag_color"}
 
 
 def journal_write(
@@ -106,7 +106,16 @@ def _undo_status(conn: sqlite3.Connection, jxa: JXAExecutor, row: sqlite3.Row) -
     if "is_read" in prev_state:
         action = "mark_read" if prev_state["is_read"] else "mark_unread"
         jxa.call("updateEmailStatus", {**base_args, "action": action})
-    if "is_flagged" in prev_state:
+    # Restore flag color/flag state. A prior flag_color (int) is restored via
+    # set_flag_color; otherwise restore the plain flagged bit. Prefer the more
+    # specific flag_color when present so undoing a recolor lands exactly.
+    prev_color = prev_state.get("flag_color")
+    if prev_color is not None:
+        jxa.call(
+            "updateEmailStatus",
+            {**base_args, "action": "set_flag_color", "flagIndex": prev_color},
+        )
+    elif "is_flagged" in prev_state:
         action = "flag" if prev_state["is_flagged"] else "unflag"
         jxa.call("updateEmailStatus", {**base_args, "action": action})
 

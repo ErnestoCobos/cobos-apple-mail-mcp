@@ -10,6 +10,7 @@ import sqlite3
 
 from cobos_apple_mail_mcp.config import Config
 from cobos_apple_mail_mcp.core.errors import AppleMailMCPError, ReadOnlyMode
+from cobos_apple_mail_mcp.core.flags import color_to_index
 from cobos_apple_mail_mcp.core.identity import normalize_message_id, to_mail_message_id
 from cobos_apple_mail_mcp.core.models import (
     AffectedMessage,
@@ -21,7 +22,7 @@ from cobos_apple_mail_mcp.core.resolver import ResolvedMessage, resolve
 from cobos_apple_mail_mcp.core.safety import guard
 from cobos_apple_mail_mcp.write.jxa_executor import JXAExecutor
 
-_STATUS_ACTIONS = ("mark_read", "mark_unread", "flag", "unflag")
+_STATUS_ACTIONS = ("mark_read", "mark_unread", "flag", "unflag", "set_flag_color")
 _TRASH_ACTIONS = ("move_to_trash", "delete_permanent")
 
 _BATCH_OPERATION_KIND = {"move": "move", "status": "status", "trash": "trash", "delete": "delete"}
@@ -119,6 +120,7 @@ def update_email_status(
     message_ids: list[str],
     action: str,
     *,
+    color: str | None = None,
     account: str | None = None,
     mailbox: str | None = None,
     dry_run: bool = False,
@@ -126,6 +128,13 @@ def update_email_status(
 ) -> OperationResult:
     if action not in _STATUS_ACTIONS:
         raise ValueError(f"unknown status action: {action!r}; expected one of {_STATUS_ACTIONS}")
+    # Resolve the target flag color up front so a bad name fails before any
+    # resolution/JXA, and both apply() and the optimistic index update agree.
+    flag_index: int | None = None
+    if action == "set_flag_color":
+        if not color:
+            raise ValueError("action 'set_flag_color' requires a color")
+        flag_index = color_to_index(color)
     _require_writable(config, "status", "update_email_status")
 
     resolved, errors = _resolve_many(conn, jxa, message_ids, account=account, mailbox=mailbox)
@@ -134,11 +143,16 @@ def update_email_status(
         # Best-effort from our index (usually fresh); undo restores this
         # exact prior value rather than guessing the opposite of the target.
         row = conn.execute(
-            "SELECT flag_read, flag_flagged FROM emails WHERE message_id = ?", (r.canonical_id,)
+            "SELECT flag_read, flag_flagged, flag_color FROM emails WHERE message_id = ?",
+            (r.canonical_id,),
         ).fetchone()
         if row is None:
             return {}
-        return {"is_read": bool(row["flag_read"]), "is_flagged": bool(row["flag_flagged"])}
+        return {
+            "is_read": bool(row["flag_read"]),
+            "is_flagged": bool(row["flag_flagged"]),
+            "flag_color": row["flag_color"],
+        }
 
     def preview(r: ResolvedMessage) -> AffectedMessage:
         ref = MessageRefModel(
@@ -147,20 +161,20 @@ def update_email_status(
         return AffectedMessage(message_ref=ref)
 
     def apply(r: ResolvedMessage) -> None:
-        jxa.call(
-            "updateEmailStatus",
-            {
-                "accountHint": r.account_name,
-                "mailboxHint": r.mailbox_name,
-                "messageId": to_mail_message_id(r.canonical_id),
-                "action": action,
-            },
-        )
+        jxa_args = {
+            "accountHint": r.account_name,
+            "mailboxHint": r.mailbox_name,
+            "messageId": to_mail_message_id(r.canonical_id),
+            "action": action,
+        }
+        if action == "set_flag_color":
+            jxa_args["flagIndex"] = flag_index
+        jxa.call("updateEmailStatus", jxa_args)
 
     def undo_record(r: ResolvedMessage) -> dict:
         return {"operation": action, "account_name": r.account_name, "prev_state": prior_state(r)}
 
-    return guard(
+    result = guard(
         config=config,
         conn=conn,
         operation="update_email_status",
@@ -173,6 +187,25 @@ def update_email_status(
         dry_run=dry_run,
         max_override=max_updates,
     )
+
+    # Optimistically update the index AFTER guard() has journaled the prior
+    # state (undo_record reads the pre-mutation flag_color), so search-by-color
+    # is fresh before the next build reads the Envelope Index (which may lag).
+    # Only flag-color actions touch flag_color; others converge on reindex.
+    if not result.dry_run and action in ("set_flag_color", "unflag"):
+        for ref in result.succeeded:
+            if action == "set_flag_color":
+                conn.execute(
+                    "UPDATE emails SET flag_color = ?, flag_flagged = 1 WHERE message_id = ?",
+                    (flag_index, ref.message_id),
+                )
+            else:  # unflag
+                conn.execute(
+                    "UPDATE emails SET flag_color = NULL WHERE message_id = ?", (ref.message_id,)
+                )
+        conn.commit()
+
+    return result
 
 
 def manage_trash(

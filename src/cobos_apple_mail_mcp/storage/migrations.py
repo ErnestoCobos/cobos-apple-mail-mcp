@@ -172,8 +172,17 @@ _MIGRATION_001 = _MIGRATION_001_TEMPLATE.replace(
     "{{EMAILS_FTS_DDL}}", EMAILS_FTS_DDL
 ).replace("{{FTS_TRIGGERS_SQL}}", FTS_TRIGGERS_SQL)
 
+# flag_color: Apple Mail's flagIndex (0-6, one of seven colored flags), NULL
+# when unflagged. Populated from the Envelope Index's flag_color column at
+# index time (see read/indexer.py::build_index) — a filter field, not FTS.
+_MIGRATION_002 = """
+ALTER TABLE emails ADD COLUMN flag_color INTEGER;
+CREATE INDEX IF NOT EXISTS idx_emails_flagcolor ON emails(flag_color) WHERE flag_color IS NOT NULL;
+"""
+
 MIGRATIONS: list[tuple[int, str]] = [
     (1, _MIGRATION_001),
+    (2, _MIGRATION_002),
 ]
 
 

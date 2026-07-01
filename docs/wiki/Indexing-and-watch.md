@@ -128,3 +128,14 @@ path for this tick; it clears itself automatically once the file is stable on a 
 `dead_letter_count`, `embed_total`/`embed_done`, and `stale: bool` — stale if there's any pending
 change, or if the last build/watch tick is older than `config.index.staleness_hours` (default
 24).
+
+## What a reindex preserves vs. re-derives
+
+Almost every `emails` column is re-derived from the `.emlx` on each reindex (the UPSERT's `ON
+CONFLICT DO UPDATE` refreshes them). The one deliberate exception is **`flag_color`**: it is
+omitted from the `ON CONFLICT` update, so a reindex of an already-colored message keeps its color
+instead of resetting it to `NULL`. That's because `flag_color` has no reliable on-disk source — it
+is only ever set by this server's own `set_flag_color` write (an optimistic index update), never
+read back from disk (see
+[Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format#flag-colors)).
+Freshly-parsed rows start `flag_color = NULL`.

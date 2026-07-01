@@ -188,7 +188,12 @@ function updateEmailStatus(args) {
   else if (args.action === "mark_unread") msg.readStatus = false;
   else if (args.action === "flag") msg.flaggedStatus = true;
   else if (args.action === "unflag") msg.flaggedStatus = false;
-  else throw "unknown status action: " + args.action;
+  else if (args.action === "set_flag_color") {
+    // flagIndex 0-6 selects one of Mail's seven colored flags; the Python
+    // layer (core/flags.py) maps the color name to this integer. Setting it
+    // also flags the message. -1 would unflag, but that path is "unflag".
+    msg.flagIndex = args.flagIndex;
+  } else throw "unknown status action: " + args.action;
   return { updated: true, action: args.action };
 }
 

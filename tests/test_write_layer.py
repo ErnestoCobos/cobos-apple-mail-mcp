@@ -198,3 +198,89 @@ def test_undo_last_nothing_to_undo_raises():
     jxa = FakeJXAExecutor()
     with pytest.raises(UndoFailed):
         undo_last(conn, jxa)
+
+
+def _seed_one_message(conn):
+    """Put a single indexed row in place so set_flag_color's prior_state read
+    and optimistic index update have a row to act on."""
+    conn.execute(
+        "INSERT INTO emails (emlx_path, account_uuid, mailbox_url, message_id, "
+        "flag_read, flag_flagged, flag_color, indexed_at) "
+        "VALUES ('/p/1.emlx', 'U', 'mbox', 'm1@x.com', 0, 0, NULL, 0)"
+    )
+    conn.commit()
+
+
+def _jxa_for_status():
+    jxa = FakeJXAExecutor()
+    jxa.on("resolveMessage", _resolve_handler({"m1@x.com": ("Work", "INBOX", 1)}))
+    jxa.on("updateEmailStatus", lambda args: {"updated": True, "action": args["action"]})
+    return jxa
+
+
+def test_set_flag_color_sets_index_and_is_undoable():
+    conn = _conn()
+    _seed_one_message(conn)
+    jxa = _jxa_for_status()
+    cfg = _cfg()
+
+    result = organize.update_email_status(
+        conn, jxa, cfg, ["m1@x.com"], "set_flag_color", color="green"
+    )
+    assert result.count == 1
+
+    # JXA received the mapped integer (green == 3), not the color name.
+    status_calls = [args for name, args in jxa.calls if name == "updateEmailStatus"]
+    assert status_calls[-1]["flagIndex"] == 3
+
+    # Optimistic index update: searchable immediately, before any reindex.
+    row = conn.execute(
+        "SELECT flag_color, flag_flagged FROM emails WHERE message_id='m1@x.com'"
+    ).fetchone()
+    assert row["flag_color"] == 3
+    assert row["flag_flagged"] == 1
+
+    # Journaled as undoable, with the prior (NULL) color captured.
+    jrow = conn.execute("SELECT operation, prev_state FROM undo_journal").fetchone()
+    assert jrow["operation"] == "set_flag_color"
+
+    # Undo restores the prior state (was unflagged) -> unflag call.
+    result = undo_last(conn, jxa)
+    assert result.count == 1
+    undo_calls = [args for name, args in jxa.calls if name == "updateEmailStatus"]
+    assert undo_calls[-1]["action"] == "unflag"
+
+
+def test_set_flag_color_requires_a_color():
+    conn = _conn()
+    _seed_one_message(conn)
+    jxa = _jxa_for_status()
+    cfg = _cfg()
+    with pytest.raises(ValueError, match="requires a color"):
+        organize.update_email_status(conn, jxa, cfg, ["m1@x.com"], "set_flag_color")
+    # Failed before any JXA call.
+    assert not any(name == "updateEmailStatus" for name, _ in jxa.calls)
+
+
+def test_set_flag_color_rejects_unknown_color():
+    conn = _conn()
+    _seed_one_message(conn)
+    jxa = _jxa_for_status()
+    cfg = _cfg()
+    with pytest.raises(ValueError):
+        organize.update_email_status(
+            conn, jxa, cfg, ["m1@x.com"], "set_flag_color", color="chartreuse"
+        )
+    assert not any(name == "updateEmailStatus" for name, _ in jxa.calls)
+
+
+def test_set_flag_color_blocked_in_read_only():
+    conn = _conn()
+    _seed_one_message(conn)
+    jxa = FakeJXAExecutor()  # no handlers -> any call raises
+    cfg = _cfg(server={"read_only": True})
+    with pytest.raises(ReadOnlyMode):
+        organize.update_email_status(
+            conn, jxa, cfg, ["m1@x.com"], "set_flag_color", color="green"
+        )
+    assert jxa.calls == []

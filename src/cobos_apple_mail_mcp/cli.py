@@ -108,6 +108,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_search.add_argument("--after")
     p_search.add_argument("--highlight", action="store_true")
     p_search.add_argument("--mode", choices=["keyword", "semantic", "hybrid"], default="keyword")
+    p_search.add_argument(
+        "--flag-color",
+        choices=["red", "orange", "yellow", "green", "blue", "purple", "gray"],
+    )
 
     p_read = sub.add_parser("read")
     p_read.add_argument("message_id")
@@ -119,6 +123,10 @@ def build_parser() -> argparse.ArgumentParser:
     p_emails.add_argument("--mailbox")
     p_emails.add_argument(
         "--filter", choices=["all", "unread", "flagged", "today", "last_7_days"], default="all"
+    )
+    p_emails.add_argument(
+        "--flag-color",
+        choices=["red", "orange", "yellow", "green", "blue", "purple", "gray"],
     )
     p_emails.add_argument("--limit", type=int, default=50)
 
@@ -247,7 +255,14 @@ def build_parser() -> argparse.ArgumentParser:
     p_status = sub.add_parser("status")
     p_status.add_argument("message_ids", nargs="+")
     p_status.add_argument(
-        "--action", choices=["mark_read", "mark_unread", "flag", "unflag"], required=True
+        "--action",
+        choices=["mark_read", "mark_unread", "flag", "unflag", "set_flag_color"],
+        required=True,
+    )
+    p_status.add_argument(
+        "--color",
+        choices=["red", "orange", "yellow", "green", "blue", "purple", "gray"],
+        help="required with --action set_flag_color",
     )
     p_status.add_argument("--account")
     p_status.add_argument("--mailbox")
@@ -399,6 +414,7 @@ def _main(argv: list[str] | None = None) -> int:
             mailbox=args.mailbox,
             before=_parse_date(args.before),
             after=_parse_date(args.after),
+            flag_color=args.flag_color,
             limit=args.limit,
             offset=args.offset,
             highlight=args.highlight,
@@ -421,6 +437,7 @@ def _main(argv: list[str] | None = None) -> int:
                 account=args.account,
                 mailbox=args.mailbox,
                 filter=args.filter,
+                flag_color=args.flag_color,
                 limit=args.limit,
             )
         )
@@ -668,6 +685,7 @@ def _main(argv: list[str] | None = None) -> int:
                 cfg,
                 args.message_ids,
                 args.action,
+                color=args.color,
                 account=args.account,
                 mailbox=args.mailbox,
                 dry_run=args.dry_run,

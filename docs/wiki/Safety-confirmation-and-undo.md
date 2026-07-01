@@ -74,6 +74,7 @@ _Classification of write operations by undoability: move, trash-until-emptied, a
 | move | Yes | `core/undo.py::_undo_move()` re-resolves at the new location and moves back |
 | trash (move_to_trash) | Yes, until emptied | journaled as a move to "Trash"; reversing moves it back to the recorded origin mailbox |
 | mark_read/unread, flag/unflag | Yes | the prior `is_read`/`is_flagged` value (read from the index at write time) is restored |
+| set_flag_color | Yes | the prior `flag_color` (read from the index at write time) is restored — a `set_flag_color` back to the old color, or `unflag` if it was previously uncolored |
 | permanent delete | **No** | never journaled — `manage_trash(action="delete_permanent")` passes `undo_record_fn=None` |
 | empty_trash | **No** | a separate function (`organize.py::empty_trash()`), not journaled |
 | send/reply/forward | **No** | never journaled — sending cannot be undone |
@@ -81,7 +82,8 @@ _Classification of write operations by undoability: move, trash-until-emptied, a
 `undo_last(batch_id=None, dry_run=False)`:
 
 - With no `batch_id`, finds the most recent batch with an undoable operation
-  (`operation IN ('move','trash','mark_read','mark_unread','flag','unflag')`) and reverses it.
+  (`operation IN ('move','trash','mark_read','mark_unread','flag','unflag','set_flag_color')`) and
+  reverses it.
 - Each row's reversal goes through the normal resolve+JXA path again — if the message has moved
   again or been deleted since, that row's undo fails with a clear per-row reason
   (`UndoResult.failed`), while the rest of the batch still attempts to undo.

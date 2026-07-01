@@ -112,15 +112,19 @@ def build_server(config: Config) -> FastMCP:
         account: str | None = None,
         mailbox: str | None = None,
         filter: str = "all",  # noqa: A002
+        flag_color: str | None = None,
         limit: int = 50,
     ) -> list[dict]:
-        """List emails. filter: all|unread|flagged|today|last_7_days."""
+        """List emails. filter: all|unread|flagged|today|last_7_days.
+        flag_color filters to one flag color (red|orange|yellow|green|blue|
+        purple|gray)."""
         return _dump(
             reading.get_emails(
                 ctx.conn,
                 account=ctx.default_account(account),
                 mailbox=ctx.default_mailbox(mailbox),
                 filter=filter,
+                flag_color=flag_color,
                 limit=limit,
             )
         )
@@ -192,6 +196,7 @@ def build_server(config: Config) -> FastMCP:
         after: str | None = None,
         unread_only: bool = False,
         flagged_only: bool = False,
+        flag_color: str | None = None,
         has_attachments: bool | None = None,
         limit: int = 25,
         offset: int = 0,
@@ -200,7 +205,7 @@ def build_server(config: Config) -> FastMCP:
         """Full-mailbox search (BM25-ranked). scope: all|subject|sender|body|attachments.
         mode: keyword|semantic|hybrid (semantic/hybrid require the optional
         [semantic] extra; otherwise this degrades to keyword search).
-        before/after are YYYY-MM-DD.
+        before/after are YYYY-MM-DD. flag_color filters to one flag color.
         """
         result = search_tools.search(
             ctx.conn,
@@ -213,6 +218,7 @@ def build_server(config: Config) -> FastMCP:
             after=_parse_date(after),
             unread_only=unread_only,
             flagged_only=flagged_only,
+            flag_color=flag_color,
             has_attachments=has_attachments,
             limit=limit,
             offset=offset,
@@ -491,12 +497,15 @@ def build_server(config: Config) -> FastMCP:
     def update_email_status(
         message_ids: list[str],
         action: str,
+        color: str | None = None,
         account: str | None = None,
         mailbox: str | None = None,
         dry_run: bool = False,
         max_updates: int | None = None,
     ) -> dict:
-        """action: mark_read|mark_unread|flag|unflag. Batch default: 10."""
+        """action: mark_read|mark_unread|flag|unflag|set_flag_color. Batch
+        default: 10. set_flag_color needs color (red|orange|yellow|green|blue|
+        purple|gray) — Apple Mail's seven colored flags."""
         return _dump(
             write_tools.update_email_status(
                 ctx.conn,
@@ -504,6 +513,7 @@ def build_server(config: Config) -> FastMCP:
                 ctx.config,
                 message_ids,
                 action,
+                color=color,
                 account=account,
                 mailbox=mailbox,
                 dry_run=dry_run,

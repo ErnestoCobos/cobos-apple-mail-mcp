@@ -124,6 +124,7 @@ def get_emails(
     account: str | None = None,
     mailbox: str | None = None,
     filter: str = "all",  # noqa: A002 - matches the spec's tool parameter name
+    flag_color: str | None = None,
     limit: int = 50,
 ) -> list[EmailSummary]:
     if filter not in _FILTERS:
@@ -138,6 +139,11 @@ def get_emails(
     if mailbox:
         where.append("(mailbox_name = :mailbox OR mailbox_role = :mailbox)")
         params["mailbox"] = mailbox
+    if flag_color:
+        from cobos_apple_mail_mcp.core.flags import color_to_index
+
+        where.append("flag_color = :flag_color")
+        params["flag_color"] = color_to_index(flag_color)
     if filter == "unread":
         where.append("flag_read = 0")
     elif filter == "flagged":

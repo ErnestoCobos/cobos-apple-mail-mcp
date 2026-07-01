@@ -80,6 +80,7 @@ class EmailSummary(BaseModel):
     is_read: bool = False
     is_flagged: bool = False
     is_answered: bool = False
+    flag_color: str | None = None  # red|orange|yellow|green|blue|purple|gray, None if unflagged
     attachment_count: int = 0
     snippet: str | None = None
     mailbox: str | None = None
@@ -132,6 +133,7 @@ class SearchHit(BaseModel):
     account: str | None = None
     is_read: bool = False
     is_flagged: bool = False
+    flag_color: str | None = None
     attachment_count: int = 0
     snippet_html: str | None = None
     thread_id: int | None = None

@@ -155,7 +155,9 @@ def _serialize_addresses(addrs: list) -> tuple[str, str]:  # noqa: ANN001
 
 
 def _row_from_parsed(
-    entry: ScanEntry, parsed: ParsedEmlx, account_names: dict[str, str] | None = None
+    entry: ScanEntry,
+    parsed: ParsedEmlx,
+    account_names: dict[str, str] | None = None,
 ) -> dict:
     to_json, to_flat = _serialize_addresses(parsed.to)
     cc_json, cc_flat = _serialize_addresses(parsed.cc)
@@ -197,6 +199,14 @@ def _row_from_parsed(
         "flag_answered": int(parsed.is_answered),
         "flag_draft": int(parsed.is_draft),
         "flag_bulk": int(parsed.is_bulk),
+        # flag_color is NULL for a freshly-parsed row and only ever set by our
+        # own set_flag_color write (optimistic index update). It is deliberately
+        # NOT in the ON CONFLICT update below, so a reindex of an already-colored
+        # message preserves the color rather than wiping it — the on-disk
+        # Envelope Index doesn't carry the per-color flagIndex in an immutable
+        # read (empirically it stores 1 for any flagged message), so disk is not
+        # a usable source. See Apple-Mail-on-disk-format / Search.
+        "flag_color": None,
         "attachment_count": parsed.attachment_count,
         "attachment_names": json.dumps(parsed.attachment_names),
         "indexed_at": time.time(),
@@ -209,15 +219,15 @@ INSERT INTO emails (
   mailbox_url, mailbox_name, mailbox_role, message_id, in_reply_to, references_ids,
   subject, subject_norm, sender_name, sender_addr, recipients_to, recipients_cc,
   recipients_all, date_sent, date_received, snippet, body_plain,
-  flag_read, flag_flagged, flag_answered, flag_draft, flag_bulk, attachment_count,
+  flag_read, flag_flagged, flag_answered, flag_draft, flag_bulk, flag_color, attachment_count,
   attachment_names, indexed_at
 ) VALUES (
   :emlx_rowid, :emlx_path, :emlx_mtime, :emlx_size, :account_uuid, :account_name,
   :mailbox_url, :mailbox_name, :mailbox_role, :message_id, :in_reply_to, :references_ids,
   :subject, :subject_norm, :sender_name, :sender_addr, :recipients_to, :recipients_cc,
   :recipients_all, :date_sent, :date_received, :snippet, :body_plain,
-  :flag_read, :flag_flagged, :flag_answered, :flag_draft, :flag_bulk, :attachment_count,
-  :attachment_names, :indexed_at
+  :flag_read, :flag_flagged, :flag_answered, :flag_draft, :flag_bulk, :flag_color,
+  :attachment_count, :attachment_names, :indexed_at
 )
 ON CONFLICT(emlx_path) DO UPDATE SET
   emlx_rowid=excluded.emlx_rowid, emlx_mtime=excluded.emlx_mtime, emlx_size=excluded.emlx_size,

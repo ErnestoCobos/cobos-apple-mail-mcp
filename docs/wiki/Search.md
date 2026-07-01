@@ -52,15 +52,19 @@ bulk-repopulated once at the end (`read/indexer.py::_rebuild_fts_index()`).
 ```
 search(query, scope ∈ {all,subject,sender,body,attachments},
        mode ∈ {keyword,semantic,hybrid} = keyword,
-       account, mailbox, before, after, unread_only, flagged_only, has_attachments,
+       account, mailbox, before, after, unread_only, flagged_only, flag_color, has_attachments,
        limit=25, offset=0, highlight=True)
 ```
 
 `scope` maps to an FTS5 column filter (`subject:(...)`, etc.) — `all` searches every column
-unfiltered. All other filters (account, mailbox, date range, unread/flagged/has_attachments) are
-plain SQL `WHERE` clauses joined against `emails`, **never** folded into the FTS5 `MATCH`
-expression — keeps user input out of FTS5 query syntax entirely
+unfiltered. All other filters (account, mailbox, date range, unread/flagged/`flag_color`/
+has_attachments) are plain SQL `WHERE` clauses joined against `emails`, **never** folded into the
+FTS5 `MATCH` expression — keeps user input out of FTS5 query syntax entirely
 (`core/text.py::sanitize_fts_query()` additionally escapes anything that looks like it).
+`flag_color` (a color name → `flagIndex` via `core/flags.py`) filters to messages flagged that
+color through this server's `set_flag_color` tool — see
+[Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format#flag-colors)
+for why UI-set colors aren't indexed.
 
 BM25 weights (`read/search.py::_BM25_WEIGHTS = "10.0, 8.0, 4.0, 1.0, 3.0"`) — subject and sender
 matches outrank an incidental body mention.
