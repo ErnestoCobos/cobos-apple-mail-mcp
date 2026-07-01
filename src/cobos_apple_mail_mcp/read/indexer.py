@@ -249,6 +249,36 @@ def _record_failure(conn: sqlite3.Connection, path: Path, exc: Exception) -> Non
     )
 
 
+def _flush_batch(conn: sqlite3.Connection, batch: list[dict], recovered_paths: list[str]) -> int:
+    """UPSERT one batch. Falls back to one-row-at-a-time + dead-lettering on
+    failure, so a single row the parser's sanitization didn't catch (a new
+    edge case in real-world mail, not just a parse-time exception) can never
+    abort the rest of an otherwise-healthy batch — same isolation contract
+    `_index_entries`'s per-entry try/except already gives parse failures.
+    """
+    try:
+        conn.executemany(_UPSERT_SQL, batch)
+        conn.executemany(
+            "DELETE FROM failed_index_jobs WHERE emlx_path = ?", [(p,) for p in recovered_paths]
+        )
+        conn.commit()
+        return len(batch)
+    except Exception:  # noqa: BLE001 - isolate the one bad row, don't lose the whole batch
+        # The UPSERT is idempotent (ON CONFLICT DO UPDATE), so re-applying rows
+        # that already landed as part of the failed executemany is harmless —
+        # no need to track how far it got before raising.
+        ok = 0
+        for row, path in zip(batch, recovered_paths, strict=True):
+            try:
+                conn.execute(_UPSERT_SQL, row)
+                conn.execute("DELETE FROM failed_index_jobs WHERE emlx_path = ?", (path,))
+                ok += 1
+            except Exception as exc:  # noqa: BLE001
+                _record_failure(conn, Path(path), exc)
+        conn.commit()
+        return ok
+
+
 def _index_entries(conn: sqlite3.Connection, entries: list[ScanEntry]) -> tuple[int, int]:
     """Parse + UPSERT entries in batches. Returns (succeeded, failed).
 
@@ -273,20 +303,14 @@ def _index_entries(conn: sqlite3.Connection, entries: list[ScanEntry]) -> tuple[
             failed += 1
             continue
         if len(batch) >= BATCH_SIZE:
-            conn.executemany(_UPSERT_SQL, batch)
-            conn.executemany(
-                "DELETE FROM failed_index_jobs WHERE emlx_path = ?", [(p,) for p in recovered_paths]
-            )
-            conn.commit()
-            succeeded += len(batch)
+            ok = _flush_batch(conn, batch, recovered_paths)
+            succeeded += ok
+            failed += len(batch) - ok
             batch, recovered_paths = [], []
     if batch:
-        conn.executemany(_UPSERT_SQL, batch)
-        conn.executemany(
-            "DELETE FROM failed_index_jobs WHERE emlx_path = ?", [(p,) for p in recovered_paths]
-        )
-        conn.commit()
-        succeeded += len(batch)
+        ok = _flush_batch(conn, batch, recovered_paths)
+        succeeded += ok
+        failed += len(batch) - ok
     return succeeded, failed
 
 

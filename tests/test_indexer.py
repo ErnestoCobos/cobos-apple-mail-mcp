@@ -125,6 +125,38 @@ def test_trigram_table_populated_when_enabled(tmp_path):
     assert count == 1
 
 
+def test_build_index_survives_unsanitized_surrogate_row(tmp_path, monkeypatch):
+    """Defense in depth: even if some future parse path slips a lone
+    surrogate past emlx_parser's sanitization (see test_emlx_parser.py for
+    the primary fix), a single bad row must be dead-lettered, not crash the
+    whole batch/build -- this is exactly what happened against a real
+    209k-message mailbox before the fix (UnicodeEncodeError out of a bare
+    executemany aborted the entire index build)."""
+    write_message(tmp_path, rowid=1, message_id="m1@example.com", subject="Fine")
+    write_message(tmp_path, rowid=2, message_id="m2@example.com", subject="Also fine")
+
+    import cobos_apple_mail_mcp.read.indexer as indexer_mod
+
+    real_parse = indexer_mod.parse_emlx_file
+
+    def poisoned_parse(path):
+        parsed = real_parse(path)
+        if parsed is not None and parsed.rowid == 2:
+            parsed.subject = "poisoned \udcff subject"
+        return parsed
+
+    monkeypatch.setattr(indexer_mod, "parse_emlx_file", poisoned_parse)
+
+    conn = _conn()
+    result = build_index(conn, tmp_path, full=True)
+
+    assert result.added == 1
+    assert result.failed == 1
+    assert conn.execute("SELECT COUNT(*) AS n FROM failed_index_jobs").fetchone()["n"] == 1
+    row = conn.execute("SELECT subject FROM emails WHERE emlx_rowid = 1").fetchone()
+    assert row["subject"] == "Fine"
+
+
 def test_index_status_reports_pending_and_stale(tmp_path):
     write_message(tmp_path, rowid=1, message_id="m1@example.com")
     conn = _conn()

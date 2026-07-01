@@ -141,6 +141,41 @@ def _parse_date_header(value) -> int | None:  # noqa: ANN001
     return int(dt.timestamp())
 
 
+def _sanitize_text(value: str | None) -> str | None:
+    """`email.policy.default` decodes malformed/non-UTF-8 headers leniently,
+    leaving lone UTF-16 surrogates in the resulting str rather than raising
+    (real .emlx files from older or misconfigured senders hit this). Those
+    surrogates are valid Python str content but sqlite3 rejects them at
+    insert time with UnicodeEncodeError, so every piece of text pulled out
+    of a message must be swept here before it reaches the index."""
+    if value is None:
+        return None
+    return value.encode("utf-8", "replace").decode("utf-8")
+
+
+def _sanitize_parsed(parsed: ParsedEmlx) -> ParsedEmlx:
+    parsed.subject = _sanitize_text(parsed.subject)
+    parsed.message_id = _sanitize_text(parsed.message_id)
+    parsed.in_reply_to = _sanitize_text(parsed.in_reply_to)
+    parsed.references = [_sanitize_text(r) or "" for r in parsed.references]
+    if parsed.sender is not None:
+        parsed.sender = AddressInfo(
+            name=_sanitize_text(parsed.sender.name), addr=_sanitize_text(parsed.sender.addr) or ""
+        )
+    parsed.to = [
+        AddressInfo(name=_sanitize_text(a.name), addr=_sanitize_text(a.addr) or "")
+        for a in parsed.to
+    ]
+    parsed.cc = [
+        AddressInfo(name=_sanitize_text(a.name), addr=_sanitize_text(a.addr) or "")
+        for a in parsed.cc
+    ]
+    parsed.body_plain = _sanitize_text(parsed.body_plain) or ""
+    parsed.body_html = _sanitize_text(parsed.body_html)
+    parsed.attachment_names = [_sanitize_text(n) or "" for n in parsed.attachment_names]
+    return parsed
+
+
 def parse_emlx_bytes(raw: bytes, *, rowid: int, path: Path, mtime: float, size: int) -> ParsedEmlx:
     newline_idx = raw.index(b"\n")
     byte_count = int(raw[:newline_idx].strip())
@@ -231,7 +266,7 @@ def parse_emlx_bytes(raw: bytes, *, rowid: int, path: Path, mtime: float, size: 
         parsed.is_flagged = decoded["is_flagged"]
         parsed.is_draft = decoded["is_draft"]
 
-    return parsed
+    return _sanitize_parsed(parsed)
 
 
 def parse_emlx_file(path: Path) -> ParsedEmlx | None:
