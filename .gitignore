@@ -31,3 +31,4 @@ swift/**/.swiftpm/
 *.db
 *.db-wal
 *.db-shm
+dist_pypi/
