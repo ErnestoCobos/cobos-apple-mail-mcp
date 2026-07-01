@@ -7,17 +7,20 @@ last_verified: 2026-06-30
 
 # Architecture
 
+```mermaid
+flowchart TD
+    MCP["MCP tools · resources (email://…) · prompts/recipes"]
+    MCP -- "read calls" --> RB
+    MCP -- "write calls" --> G{{"guard()"}}
+    G --> WB
+    RB[["ReadBackend<br/>Envelope Index + .emlx + FTS5"]]
+    WB[["WriteBackend<br/>AppleScript / JXA"]]
+    RB <-. "bridged by canonical RFC822 Message-ID<br/>(core/resolver.py — read-back verified)" .-> WB
 ```
-                  MCP tools · resources (email://…) · prompts/recipes
-                                      │
-                       all WRITES pass through guard()
-                  ┌───────────────────┴───────────────────┐
-            ReadBackend                              WriteBackend
-       (Envelope Index + .emlx + FTS5)            (AppleScript/JXA)
-                  └─────────── bridged by ───────────────┘
-                    canonical RFC822 Message-ID
-                 (core/resolver.py — read-back verified)
-```
+
+*(Mermaid diagram — if it doesn't render in your viewer: reads flow from MCP tools straight into
+`ReadBackend`; every write flows through `guard()` first, then into `WriteBackend`; the two
+backends are bridged by the canonical Message-ID resolver.)*
 
 ## The dual-path design
 
@@ -37,6 +40,32 @@ wrapper that resolves its target via `core/resolver.py`, then passes through
 `core/safety.py::guard()` before mutating anything.
 
 ## Read → write flow for one write call (e.g. `move_email`)
+
+```mermaid
+sequenceDiagram
+    participant C as Caller
+    participant WT as tools/write_tools.py
+    participant R as core/resolver.py
+    participant G as core/safety.py::guard()
+    participant J as write/jxa_executor.py
+    participant M as Mail.app (osascript)
+    participant U as core/undo.py
+
+    C->>WT: move_email(message_id, to_mailbox)
+    WT->>R: resolve(canonical_id, hints)
+    R-->>WT: ResolvedMessage(account, mailbox, mail_int_id)
+    WT->>G: guard(op, resolved, dry_run, confirm)
+    alt read-only / batch limit / missing confirm
+        G-->>WT: typed error (no JXA call made)
+    else allowed
+        G->>J: JXAExecutor.call("moveEmail", …)
+        J->>M: osascript -l JavaScript (hard timeout, process-group kill)
+        M-->>J: result
+        J-->>G: result
+        G->>U: journal_write(batch)  — reversible ops only
+        G-->>WT: OperationResult
+    end
+```
 
 1. `tools/write_tools.py::move_email()` is called with a canonical `message_id`.
 2. `core/resolver.py::resolve()` turns that id into a `ResolvedMessage` (account_name,

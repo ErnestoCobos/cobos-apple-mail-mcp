@@ -28,7 +28,46 @@ moved = [(old_path, new_entry) for entries sharing rowid in (added ∩ deleted b
 Implemented in `read/indexer.py::inventory_diff()`. A move only updates `emlx_path`,
 `account_uuid`, `mailbox_name`/`role` — no reparse needed.
 
+### Diff complexity
+
+Let *D* = messages currently on disk, *I* = rows currently in `emails`, *Δ* = `|added| +
+|changed| + |deleted| + |moved|` (what actually changed since the last run). Two different costs
+are easy to conflate:
+
+- **Computing the diff itself** is `O(D + I)` — every run has to enumerate the *entire* current
+  disk inventory and the *entire* `emails` table to build the two path sets before it can take a
+  set difference, even if nothing changed. This is a directory walk plus one `SELECT` over
+  `emails` — cheap *per item* (a `stat()` and a row read), but linear in mailbox size regardless
+  of how much mail is new.
+- **Doing something about the diff** (parsing, threading, re-indexing) is `O(Δ)` — strictly
+  proportional to what changed, not to *D* or *I*.
+
+So one `--watch` tick costs `O(D + I) + O(Δ)`, not `O(D)` alone: for a personal mailbox where a
+tick typically finds a handful of new messages (Δ in the single digits) against hundreds of
+thousands already indexed (*D*, *I* ≈ 2×10⁵), the diff-enumeration term dominates wall-clock time,
+but its per-item cost (filesystem metadata + a row read) is orders of magnitude cheaper than the
+`O(Δ)` term's per-item cost (full parse, HTML→text, threading) — which is exactly why `--watch`
+stays fast even against a 210k-message mailbox: the part that scales with mailbox size is cheap,
+and the part that's expensive scales with new mail, not total mail.
+
 ## Crash-safe bulk build sequence
+
+```mermaid
+flowchart TD
+    A["inventory_diff()<br/>O(D+I)"] --> B["resolve account display names<br/>backfill via cheap indexed UPDATE"]
+    B --> C{"full build?"}
+    C -- yes --> D["drop FTS5 triggers"]
+    C -- no --> E
+    D --> E["parse + UPSERT added/changed<br/>in batches of 500 — O(Δ)"]
+    E --> F["apply deleted / moved<br/>metadata-only, no reparse"]
+    F --> G{"full build?"}
+    G -- yes --> H["rebuild emails_fts<br/>+ trigram table if enabled"]
+    G -- no --> I
+    H --> I{"anything changed?"}
+    I -- yes --> J["recompute JWZ threading<br/>for the whole index — O(I log I)"]
+    I -- no --> K["record sync_state"]
+    J --> K
+```
 
 `build_index(conn, mail_dir, full=False, enable_trigram=False)`:
 

@@ -44,6 +44,32 @@ direct mapping.
 
 ## The resolution algorithm
 
+```mermaid
+flowchart TD
+    Start(["resolve(canonical_id)"]) --> Opaque{"opaque amid: handle?"}
+    Opaque -- yes --> NF1["raise NotFound<br/>(no Message-ID to search on)"]
+    Opaque -- no --> Hint{"account/mailbox<br/>hint given?"}
+    Hint -- yes --> ScopedHint["scoped JXA call<br/>O(1) round trip"]
+    Hint -- no --> Cache{"resolve_cache hit?"}
+    Cache -- yes --> ScopedCache["scoped JXA call<br/>using cached account/mailbox"]
+    Cache -- no --> Seed{"in local index?"}
+    Seed -- yes --> ScopedSeed["scoped JXA call<br/>using sender/mailbox from the index"]
+    Seed -- no --> Broad["bounded broad scan<br/>(last resort, capped + timed out)"]
+    ScopedHint --> Verify
+    ScopedCache --> Verify
+    ScopedSeed --> Verify
+    Broad --> Verify
+    Verify{"read-back:<br/>candidate.messageId == canonical_id?"}
+    Verify -- "0 matches" --> NF2["NotFound"]
+    Verify -- "1 match" --> One["cache_put(); return ResolvedMessage"]
+    Verify -- ">1 matches" --> Multi["MultipleMatches(candidates)<br/>never auto-pick"]
+```
+
+Each of the four scoped attempts is tried **in order, stopping at the first one that returns any
+candidates** — the diamond chain above is a fallback cascade, not four independent lookups. Only
+the last resort (broad scan) is unscoped and therefore the only one whose cost can grow with
+mailbox size; every earlier branch is a single, already-scoped `whose message id is X` call.
+
 ```
 resolve(canonical_id, account_hint=None, mailbox_hint=None):
   if is_opaque_handle(canonical_id): raise NotFound  # no Message-ID to search on
@@ -105,6 +131,28 @@ CREATE TABLE resolve_cache (
 A hint table, never trusted blindly — every cache hit still goes through the full scoped
 resolution + read-back verification above. A stale cache entry costs one extra scoped lookup,
 never a wrong write.
+
+### Cost model
+
+Let *M* = the number of messages Mail.app would have to consider for an **unscoped** `whose
+message id is X` query (worst case, mailbox size). Each of the four attempts in the flowchart
+above is a single JXA round trip; the difference between them is not how many round trips happen
+(always exactly one, per attempt, until something returns candidates) but how much *searching*
+that one round trip has to do internally:
+
+- **Hint / cache / read-seed hit** — the scoped call already knows the account and mailbox, so
+  Mail.app's own lookup is bounded by that one mailbox's size, not *M*. In steady state (an
+  MCP client re-touching messages it already resolved once, e.g. `move` after `search`) this is
+  the common case: **O(1) JXA round trips**, cost independent of overall mailbox size.
+  `resolve_cache` exists specifically to keep hitting this branch across separate tool calls, not
+  just within one.
+- **Broad scan (no hint, no cache, not in the local index)** — the only branch whose cost can
+  grow with *M*; bounded by `config.timeouts.broad_scan_sec` so it degrades to a typed `Timeout`
+  rather than blocking, per CLAUDE.md invariant #4 ("never hang").
+
+This is why the resolver is designed to prefer *any* scoped attempt over the broad scan, even a
+stale one: a wrong-but-scoped guess costs one extra O(1) round trip when it misses; skipping
+straight to the broad scan on every call would make **every** write O(*M*) instead of O(1).
 
 ## Replacing `subject_keyword` matching
 
