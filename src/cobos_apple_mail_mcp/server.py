@@ -10,14 +10,16 @@ the write layer and the safety guard; Phase 5 adds prompts/recipes.
 from __future__ import annotations
 
 import functools
+import json
 import logging
 import sqlite3
 from collections.abc import Callable
 from pathlib import Path
-from typing import Any, TypeVar
+from typing import Annotated, Any, TypeVar
 
 from fastmcp import FastMCP
 from fastmcp.exceptions import ToolError
+from pydantic import BeforeValidator
 
 from cobos_apple_mail_mcp.cli import _parse_date
 from cobos_apple_mail_mcp.config import Config
@@ -34,6 +36,34 @@ from cobos_apple_mail_mcp.write.jxa_executor import JXAExecutor
 logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., Any])
+
+
+def _coerce_str_list(value: Any) -> Any:
+    """Tolerate MCP clients that serialize array parameters as a JSON string
+    ('["a", "b"]') or pass a single bare string instead of a list — observed
+    live from Cowork calling manage_drafts/compose_email with attachments as a
+    stringified list, which strict list[str] validation rejected. The JSON
+    schema still advertises an array; this only widens what we accept at
+    runtime. Anything unparseable is passed through for pydantic to reject
+    with its normal error.
+    """
+    if isinstance(value, str):
+        stripped = value.strip()
+        if stripped.startswith("["):
+            try:
+                parsed = json.loads(stripped)
+            except ValueError:
+                return [value]
+            if isinstance(parsed, list):
+                return [item if isinstance(item, str) else str(item) for item in parsed]
+            return value
+        return [value]
+    return value
+
+
+# list[str] tool parameters use this alias so the above coercion runs before
+# validation. Schema-wise it is identical to list[str].
+StrList = Annotated[list[str], BeforeValidator(_coerce_str_list)]
 
 
 def _wrap_errors(fn: F) -> F:
@@ -331,7 +361,7 @@ def build_server(config: Config) -> FastMCP:
         body: str,
         cc: str | None = None,
         bcc: str | None = None,
-        attachments: list[str] | None = None,
+        attachments: StrList | None = None,
         mode: str = "send",
         body_html: str | None = None,
         from_address: str | None = None,
@@ -361,7 +391,7 @@ def build_server(config: Config) -> FastMCP:
         reply_to_all: bool = False,
         cc: str | None = None,
         bcc: str | None = None,
-        attachments: list[str] | None = None,
+        attachments: StrList | None = None,
         mode: str = "send",
         body_html: str | None = None,
         account: str | None = None,
@@ -448,7 +478,7 @@ def build_server(config: Config) -> FastMCP:
         body: str | None = None,
         cc: str | None = None,
         bcc: str | None = None,
-        attachments: list[str] | None = None,
+        attachments: StrList | None = None,
         draft_subject: str | None = None,
         from_address: str | None = None,
     ) -> dict:
@@ -473,7 +503,7 @@ def build_server(config: Config) -> FastMCP:
     @mcp.tool
     @_wrap_errors
     def move_email(
-        message_ids: list[str],
+        message_ids: StrList,
         to_mailbox: str,
         to_account: str | None = None,
         account: str | None = None,
@@ -508,7 +538,7 @@ def build_server(config: Config) -> FastMCP:
     @mcp.tool
     @_wrap_errors
     def update_email_status(
-        message_ids: list[str],
+        message_ids: StrList,
         action: str,
         color: str | None = None,
         account: str | None = None,
@@ -547,7 +577,7 @@ def build_server(config: Config) -> FastMCP:
     def manage_trash(
         action: str,
         account: str,
-        message_ids: list[str] | None = None,
+        message_ids: StrList | None = None,
         mailbox: str | None = None,
         dry_run: bool = True,
         confirm: bool = False,

@@ -11,6 +11,12 @@ All 31 tools are registered in `server.py` and mirrored as CLI subcommands
 (`apple-mail-mcp <command> ...`, JSON output). Every parameter name matches between the MCP tool
 and its CLI flag (CLI flags are kebab-case, e.g. `to_mailbox` → `--to-mailbox`).
 
+**Lenient list parameters.** Every list-typed parameter (`message_ids`, `attachments`) also
+accepts a JSON-stringified list (`'["a", "b"]'`) or a single bare string (treated as a one-item
+list) — some MCP clients serialize array arguments as strings (observed live from Cowork, which
+otherwise failed with *"Input should be a valid list"*). The advertised JSON schema is still a
+plain array of strings; the widening is runtime-only (`server.py::StrList`).
+
 ## Read tools (`tools/reading.py`)
 
 | Tool | Parameters | Backend |
