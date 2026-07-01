@@ -102,33 +102,32 @@ GitHub Actions (`.github/workflows/ci.yml`) runs on macOS runners (this project'
 the documented test boundary both require macOS for the real-`osascript` and real-`sqlite-vec`
 tests to run, not just skip): `ruff check`, `pytest`, and `scripts/check_docs_sync.py`.
 
-## Publishing to PyPI (API token)
+## Publishing to PyPI (Trusted Publishing — no API token)
 
-`.github/workflows/publish.yml` publishes to PyPI on every GitHub Release, authenticating with a
-PyPI **API token** stored as a GitHub Actions secret. The canonical MCP install
+`.github/workflows/publish.yml` publishes to PyPI on every GitHub Release using PyPI **Trusted
+Publishing** (OIDC): PyPI verifies the GitHub Actions identity directly, so there is **no API token
+stored anywhere** — nothing to leak or rotate. The canonical MCP install
 (`uvx cobos-apple-mail-mcp serve`, `pipx install cobos-apple-mail-mcp`) pulls from here.
 
-**One-time setup** (done once by the project owner):
+**One-time setup** (done once by the project owner, all on the web, no token generated):
 
-1. PyPI → *Account settings* → *API tokens* → **Add API token**. For the very first publish the
-   project doesn't exist yet, so the token must be **account-scoped**; after the first release,
-   revoke it and issue one **scoped to `cobos-apple-mail-mcp`** (narrower blast radius).
-2. GitHub repo → *Settings* → *Environments* → **`pypi`** (create it if it isn't there yet) → *Add
-   secret* → name `PYPI_API_TOKEN`, value = the token. The publish job runs in that environment, so
-   you can also attach a **required reviewer** to it — then a release can't publish without an
-   approval. (A repo-level *Actions* secret of the same name also works if you don't scope it to the
-   environment.)
-3. Cut a GitHub Release (or *Actions → Publish to PyPI → Run workflow*). The workflow builds the
-   sdist+wheel and uploads them using the token.
+1. PyPI → *Your projects* → `cobos-apple-mail-mcp` → *Publishing* (or *Add a pending publisher* for a
+   project that doesn't exist yet): PyPI project name `cobos-apple-mail-mcp`, owner `ErnestoCobos`,
+   repository `cobos-apple-mail-mcp`, workflow filename `publish.yml`, environment name `pypi`. The
+   environment must match the `environment: pypi` the publish job declares; GitHub auto-creates it on
+   first run, and you can attach a **required reviewer** to it (repo *Settings → Environments*) so a
+   release can't publish without an approval.
+2. Cut a GitHub Release (or *Actions → Publish to PyPI → Run workflow*). PyPI accepts the upload
+   because the OIDC identity matches the publisher — no secret involved.
 
-**Never commit the token or paste it anywhere but the GitHub secret store**; if it's ever exposed,
-revoke and re-add it. Bump `version` in `pyproject.toml` (and `__init__.py`) before tagging.
+After the first successful publish the pending publisher becomes a permanent trusted publisher and
+every future release publishes automatically. Bump `version` in `pyproject.toml` (and
+`__init__.py`) before tagging.
 
-> **More secure alternative — Trusted Publishing (OIDC), no token:** PyPI can verify the GitHub
-> Actions identity directly, so there's nothing to leak or rotate. To switch, configure a PyPI
-> pending publisher (project `cobos-apple-mail-mcp`, owner `ErnestoCobos`, repo
-> `cobos-apple-mail-mcp`, workflow `publish.yml`, environment `pypi`), then in `publish.yml` drop
-> the `with: password:` and instead grant the job `permissions: id-token: write`.
+> **Token alternative (not used):** you *can* instead store a PyPI API token as the GitHub Actions
+> secret `PYPI_API_TOKEN` (scoped to the `pypi` environment) and give the publish step
+> `with: { password: ${{ secrets.PYPI_API_TOKEN }} }` in place of `permissions: id-token: write`.
+> Trusted Publishing is preferred — there's no token to leak.
 
 ## Release (GitHub artifacts + wiki)
 

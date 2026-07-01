@@ -1,9 +1,11 @@
 name: Publish to PyPI
 
 # Publishes the package to PyPI on every GitHub Release, and can be run by hand
-# (workflow_dispatch). Authenticates with a PyPI API token stored as the GitHub
-# Actions secret PYPI_API_TOKEN (scoped to the "pypi" environment). One-time
-# setup is documented in docs/wiki/Development-and-contributing.md.
+# (workflow_dispatch). Uses PyPI Trusted Publishing (OIDC) — there is NO API
+# token stored anywhere; PyPI verifies the GitHub Actions identity directly.
+# The trusted publisher (project cobos-apple-mail-mcp, workflow publish.yml,
+# environment pypi) was established by the first release. One-time setup is in
+# docs/wiki/Development-and-contributing.md.
 
 on:
   release:
@@ -13,19 +15,18 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
-    # Publish runs in the "pypi" environment: store the PyPI API token there as a
-    # secret named PYPI_API_TOKEN, and optionally add a required reviewer so a
-    # push alone can't publish. GitHub auto-creates the environment on first run.
+    # Must match the environment named in PyPI's trusted-publisher config; also
+    # where an optional required-reviewer rule would live. GitHub auto-creates it.
     environment:
       name: pypi
       url: https://pypi.org/p/cobos-apple-mail-mcp
+    permissions:
+      id-token: write # required for Trusted Publishing (OIDC); no token needed
     steps:
       - uses: actions/checkout@v4
       - name: Install uv
         uses: astral-sh/setup-uv@v5
       - name: Build sdist + wheel
         run: uv build
-      - name: Publish to PyPI
+      - name: Publish to PyPI (Trusted Publishing)
         uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          password: ${{ secrets.PYPI_API_TOKEN }}
