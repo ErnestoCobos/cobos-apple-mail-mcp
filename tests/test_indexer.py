@@ -220,3 +220,32 @@ def test_index_status_reports_pending_and_stale(tmp_path):
     assert status.total_indexed == 1
     assert status.pending_added == 0
     assert status.stale is False
+
+
+def test_find_mail_directory_degrades_when_unreadable(tmp_path):
+    """~/Library/Mail present but unreadable (the signature of missing Full Disk
+    Access) must degrade to None rather than raise PermissionError — the MCP
+    server has to start regardless, then report the problem via its tools."""
+    import os
+    import stat
+
+    import pytest
+
+    from cobos_apple_mail_mcp.read.envelope_reader import (
+        find_mail_directory,
+        library_mail_permission_denied,
+    )
+
+    library_mail = tmp_path / "Library" / "Mail"
+    (library_mail / "V10").mkdir(parents=True)
+    assert find_mail_directory(home=tmp_path) == library_mail / "V10"
+    assert library_mail_permission_denied(home=tmp_path) is False
+
+    os.chmod(library_mail, 0)
+    try:
+        if os.access(library_mail, os.R_OK):  # root ignores the mode bits
+            pytest.skip("cannot simulate permission denial (running as root)")
+        assert find_mail_directory(home=tmp_path) is None  # no raise
+        assert library_mail_permission_denied(home=tmp_path) is True
+    finally:
+        os.chmod(library_mail, stat.S_IRWXU)

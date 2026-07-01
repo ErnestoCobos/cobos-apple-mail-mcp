@@ -2,7 +2,7 @@
 covers:
   - scripts/build_pyz.sh
   - pyproject.toml
-last_verified: 2026-06-30
+last_verified: 2026-07-01
 ---
 
 # Single-file packaging (`apple-mail-mcp.pyz`)

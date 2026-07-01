@@ -10,6 +10,7 @@ the write layer and the safety guard; Phase 5 adds prompts/recipes.
 from __future__ import annotations
 
 import functools
+import logging
 import sqlite3
 from collections.abc import Callable
 from pathlib import Path
@@ -29,6 +30,8 @@ from cobos_apple_mail_mcp.skills.loader import register_prompts
 from cobos_apple_mail_mcp.storage.database import connect_index
 from cobos_apple_mail_mcp.tools import knowledge_tools, reading, search_tools, write_tools
 from cobos_apple_mail_mcp.write.jxa_executor import JXAExecutor
+
+logger = logging.getLogger(__name__)
 
 F = TypeVar("F", bound=Callable[..., Any])
 
@@ -650,6 +653,19 @@ def build_server(config: Config) -> FastMCP:
 
 def run_server(config: Config, *, watch: bool = False) -> None:
     mcp = build_server(config)
+    # Start even without Full Disk Access so the client stays connected and the
+    # tools can report the problem, instead of the whole server disconnecting
+    # with a raw PermissionError traceback. Say clearly what to do.
+    from cobos_apple_mail_mcp.read.envelope_reader import library_mail_permission_denied
+
+    if library_mail_permission_denied():
+        logger.warning(
+            "Cannot read ~/Library/Mail: Full Disk Access is not granted to the app "
+            "running this server (e.g. Claude Desktop). Grant it in System Settings -> "
+            "Privacy & Security -> Full Disk Access, then fully quit and reopen that app. "
+            "Read/search/index tools stay unavailable until then; write tools (Mail.app "
+            "scripting) are unaffected."
+        )
     if watch:
         from cobos_apple_mail_mcp.read.watcher import start_background_watch
 

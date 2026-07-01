@@ -1,6 +1,6 @@
 ---
 covers: []
-last_verified: 2026-06-30
+last_verified: 2026-07-01
 ---
 
 # Permissions & troubleshooting
@@ -34,8 +34,23 @@ _Read-path decision tree: with Full Disk Access, reads go disk-direct via find_m
    beyond Automation.
 
 `apple-mail-mcp index status` and `apple-mail-mcp init` probe what they can and emit an
-actionable error rather than failing silently. If Full Disk Access is missing, reads
-automatically fall back to the JXA path (slower, but correct) rather than failing outright.
+actionable error rather than failing silently. If Full Disk Access is missing the server still
+**starts** — it never crashes on the missing grant (`find_mail_directory()` degrades to `None`
+instead of raising `PermissionError`) — and logs a clear warning; read/search/index tools report
+`full_disk_access_denied` until the grant is in place, while write tools (Mail.app scripting, gated
+by Automation, not Full Disk Access) keep working.
+
+### "Server disconnected" right after registering with an MCP client
+
+If a client (e.g. Claude Desktop) shows the server connect and then immediately disconnect, and its
+logs contain `PermissionError: [Errno 1] Operation not permitted: '.../Library/Mail'`, the **client
+app itself** lacks Full Disk Access. A GUI client launches the server as a subprocess, so the
+server runs under the *client's* TCC identity — a grant to your terminal doesn't transfer. Grant
+Full Disk Access to the client app (System Settings → Privacy & Security → Full Disk Access →
+enable e.g. Claude), then **fully quit and reopen it** (Cmd-Q, not just closing the window). From
+**v0.2.1** the server no longer crashes here — it starts and logs the warning above — but it still
+needs the grant to read any mail. (A write-only Apple Mail MCP server that never touches
+`~/Library/Mail` won't hit this; the fast on-disk read path is exactly what needs the grant.)
 
 ### What else gets read, beyond `~/Library/Mail`
 

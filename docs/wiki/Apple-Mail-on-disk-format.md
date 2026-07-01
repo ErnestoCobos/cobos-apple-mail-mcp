@@ -2,7 +2,7 @@
 covers:
   - src/cobos_apple_mail_mcp/read/envelope_reader.py
   - src/cobos_apple_mail_mcp/read/emlx_parser.py
-last_verified: 2026-06-30
+last_verified: 2026-07-01
 ---
 
 # Apple Mail on-disk format
@@ -15,7 +15,11 @@ last_verified: 2026-06-30
 
 `N` has been 8 (Big Sur), 9 (Monterey), 10 (Ventura/Sonoma/Sequoia) — multiple version
 directories can coexist on an upgraded system. `read/envelope_reader.py::find_mail_directory()`
-picks the highest `V{N}` present.
+picks the highest `V{N}` present. It returns `None` and **never raises**: if `~/Library/Mail` is
+absent, or present-but-unreadable because the host process lacks Full Disk Access, the reader
+degrades instead of crashing the server (`library_mail_permission_denied()` tells the two cases
+apart so callers can surface an actionable message — see
+[Permissions & troubleshooting](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Permissions-and-troubleshooting)).
 
 ```
 ~/Library/Mail/V10/

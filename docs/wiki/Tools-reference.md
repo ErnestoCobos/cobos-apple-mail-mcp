@@ -2,7 +2,7 @@
 covers:
   - src/cobos_apple_mail_mcp/server.py
   - src/cobos_apple_mail_mcp/tools/*.py
-last_verified: 2026-06-30
+last_verified: 2026-07-01
 ---
 
 # Tools reference

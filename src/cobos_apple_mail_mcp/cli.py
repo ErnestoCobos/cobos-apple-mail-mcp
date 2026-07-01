@@ -55,6 +55,19 @@ def _mail_dir(cfg: Config) -> Path | None:
     return resolve_mail_dir(None)
 
 
+def _mail_dir_error() -> AppleMailMCPError:
+    """The right message for a missing mail dir: distinguish 'Full Disk Access
+    not granted' (the common cause) from 'Mail.app not set up'."""
+    from cobos_apple_mail_mcp.read.envelope_reader import library_mail_permission_denied
+
+    if library_mail_permission_denied():
+        return AppleMailMCPError(
+            "cannot read ~/Library/Mail: grant Full Disk Access to your terminal "
+            "(System Settings -> Privacy & Security -> Full Disk Access), then re-run."
+        )
+    return AppleMailMCPError("could not locate ~/Library/Mail/V*; is Mail.app set up?")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         prog="apple-mail-mcp", description="Unified Apple Mail MCP server"
@@ -392,7 +405,7 @@ def _main(argv: list[str] | None = None) -> int:
         exclude = set(cfg.index.exclude_mailboxes)
         if args.index_command == "build":
             if mail_dir is None:
-                raise AppleMailMCPError("could not locate ~/Library/Mail/V*; is Mail.app set up?")
+                raise _mail_dir_error()
             result = build_index(
                 conn,
                 mail_dir,
@@ -403,7 +416,7 @@ def _main(argv: list[str] | None = None) -> int:
             _print_json(result)
         elif args.index_command == "rebuild":
             if mail_dir is None:
-                raise AppleMailMCPError("could not locate ~/Library/Mail/V*; is Mail.app set up?")
+                raise _mail_dir_error()
             result = build_index(
                 conn,
                 mail_dir,
@@ -426,7 +439,7 @@ def _main(argv: list[str] | None = None) -> int:
         from cobos_apple_mail_mcp.read.watcher import run_watch_loop
 
         if mail_dir is None:
-            raise AppleMailMCPError("could not locate ~/Library/Mail/V*; is Mail.app set up?")
+            raise _mail_dir_error()
         run_watch_loop(conn, mail_dir, cfg)
         return 0
 

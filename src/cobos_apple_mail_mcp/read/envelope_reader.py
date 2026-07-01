@@ -58,12 +58,22 @@ def find_mail_directory(home: Path | None = None) -> Path | None:
 
     Multiple version directories can coexist on a system that's been
     upgraded across several macOS releases; the highest number is current.
+
+    Returns None — never raises. If ~/Library/Mail exists but can't be read
+    (the signature of missing Full Disk Access for the host process — e.g. an
+    MCP client launching this server without the grant), degrade to None so the
+    server still starts; `library_mail_permission_denied()` lets callers tell
+    that case apart and surface an actionable message instead of a traceback.
     """
     library_mail = (home or Path.home()) / "Library" / "Mail"
     if not library_mail.is_dir():
         return None
+    try:
+        entries = list(library_mail.iterdir())
+    except OSError:
+        return None
     versions: list[tuple[int, Path]] = []
-    for entry in library_mail.iterdir():
+    for entry in entries:
         if entry.is_dir() and entry.name.startswith("V") and entry.name[1:].isdigit():
             versions.append((int(entry.name[1:]), entry))
     if not versions:
@@ -72,16 +82,39 @@ def find_mail_directory(home: Path | None = None) -> Path | None:
     return versions[0][1]
 
 
+def library_mail_permission_denied(home: Path | None = None) -> bool:
+    """True only when ~/Library/Mail exists but this process is not permitted to
+    read it — the signature of missing Full Disk Access. Used to give a clear,
+    actionable message rather than a raw `PermissionError`. False when the
+    directory is readable or simply absent."""
+    library_mail = (home or Path.home()) / "Library" / "Mail"
+    if not library_mail.is_dir():
+        return False
+    try:
+        next(iter(library_mail.iterdir()), None)
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
 def find_envelope_index(mail_dir: Path) -> Path | None:
     candidate = mail_dir / "MailData" / "Envelope Index"
     return candidate if candidate.is_file() else None
 
 
 def list_account_directories(mail_dir: Path) -> list[Path]:
-    """UUID-named account directories directly under the version directory."""
+    """UUID-named account directories directly under the version directory.
+    Returns [] (never raises) if the directory can't be read — e.g. Full Disk
+    Access was revoked between resolving the dir and scanning it."""
+    try:
+        entries = list(mail_dir.iterdir())
+    except OSError:
+        return []
     return [
         entry
-        for entry in mail_dir.iterdir()
+        for entry in entries
         if entry.is_dir() and entry.name != "MailData" and "-" in entry.name
     ]
 

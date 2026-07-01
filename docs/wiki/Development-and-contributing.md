@@ -50,6 +50,10 @@ uv run ruff check src tests
   fixture proves it degrades to "skipped" rather than crashing the build. `pytest.importorskip`
   skips the module cleanly when the `[attachments]` extra isn't installed; the `[dev]` extra
   includes `pypdf` so CI runs it for real.
+- `tests/test_indexer.py::test_find_mail_directory_degrades_when_unreadable` `chmod 0`s a synthetic
+  `~/Library/Mail` to prove `find_mail_directory()` returns `None` (never raises) when Full Disk
+  Access is missing — the regression guard for the "server disconnects on startup with a raw
+  `PermissionError`" bug; it self-skips if the suite runs as root, where the mode bits are ignored.
 
 The only things this suite cannot verify without a real, fully-configured Mac: the actual
 `write/scripts/mail_core.js` JXA against a live Mail.app (compose/reply/forward/move/trash/
