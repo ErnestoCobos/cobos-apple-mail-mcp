@@ -422,8 +422,8 @@ function finalizeOutgoing(outgoing, mode) {
 // Resolve the address to send from: an explicit fromAddress wins; otherwise the
 // requested account's own first address. Mail picks the sending account by the
 // sender address, so without this a compose silently goes out from the default
-// account regardless of the `account` argument (verified live: an account arg
-// of "Account-A" still sent From an iCloud address).
+// account regardless of the `account` argument (verified live: an explicit
+// account argument still sent From the default account's address).
 function _senderFor(app, args) {
   if (args.fromAddress) return args.fromAddress;
   if (args.account) {

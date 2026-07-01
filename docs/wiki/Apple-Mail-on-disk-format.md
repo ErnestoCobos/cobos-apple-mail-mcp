@@ -212,8 +212,7 @@ once per build and:
 
 Falls back to the raw UUID on any missing file, schema mismatch, or permission error — this is a
 best-effort supplementary lookup, never a hard requirement, matching
-`envelope_reader.py::read_envelope_flags()`'s defensive style. Verified end-to-end: all 7 real
-accounts on the verification mailbox resolved to their correct real names ("Account-A",
-"Account-B", "Account-C", "On My Mac", "Account-D", "Account-F", "Account-E"), including one account
-whose real `ZACCOUNTDESCRIPTION` had a stray leading space in the actual system data — stripped
-before use.
+`envelope_reader.py::read_envelope_flags()`'s defensive style. Verified end-to-end against a real
+7-account mailbox: every account resolved from its raw UUID directory name to its correct
+human-readable display name, including one whose real `ZACCOUNTDESCRIPTION` had a stray leading
+space in the actual system data — stripped before use.

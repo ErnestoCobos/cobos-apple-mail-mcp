@@ -32,9 +32,9 @@ still a synthetic-only or extrapolated number.
   partway through before that fix.
 - `get_inbox_overview`, `get_needs_response`, `get_email_thread`: all sub-second, computed
   entirely from the local index with zero Mail.app/AppleScript involvement.
-- `list_accounts`/`account` fields on every read tool: resolved to real human display names
-  ("Account-A", "Account-F", etc.) via `read/account_names.py`, verified against all 7 real
-  accounts on this mailbox — see [Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format#account-display-names).
+- `list_accounts`/`account` fields on every read tool: resolved from raw UUID directory names to
+  real human display names via `read/account_names.py`, verified against all 7 accounts on this
+  mailbox — see [Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format#account-display-names).
 - **Attachment text extraction** (optional `[attachments]` extra): a bounded backfill over 100
   real attachment-bearing messages took **3.15s — ~31.5 ms/message** on this mailbox (average
   includes fast rejection of the many `.pdf`-named attachments that aren't real PDFs; 26 of the 100

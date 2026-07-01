@@ -81,9 +81,9 @@ def resolve_account_names(accounts_db_path: Path | None = None) -> dict[str, str
                 return None
             seen.add(current["Z_PK"])
             # Real-world data has stray leading/trailing whitespace on
-            # ZACCOUNTDESCRIPTION (verified: one real account's description
-            # was literally " Account-C") -- strip before the truthiness check so
-            # a whitespace-only description falls through to ZUSERNAME.
+            # ZACCOUNTDESCRIPTION (verified: a real account's description came
+            # back with a leading space) -- strip before the truthiness check
+            # so a whitespace-only description falls through to ZUSERNAME.
             description = (current["ZACCOUNTDESCRIPTION"] or "").strip()
             username = (current["ZUSERNAME"] or "").strip()
             name = description or username
