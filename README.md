@@ -14,6 +14,32 @@ Full depth lives in the **[GitHub Wiki](https://github.com/ErnestoCobos/cobos-ap
 (architecture, on-disk format, every tool's parameters, configuration reference, troubleshooting).
 This README is the quickstart and the pitch.
 
+## Install in 30 seconds
+
+```bash
+uvx cobos-apple-mail-mcp --help        # try it with zero install (uv)
+# or install it:  pipx install cobos-apple-mail-mcp
+apple-mail-mcp init && apple-mail-mcp index build   # config + build the local index
+```
+
+Then register `apple-mail-mcp serve` with your MCP client (Claude Desktop / Code, Codex, Kimi) —
+[jump to the per-client blocks](#register-with-your-mcp-client). Full walkthrough:
+[Getting started](#getting-started-5-minute-walkthrough). One-time macOS permissions
+(Full Disk Access + Automation) are covered there.
+
+## What you get — 31 tools in one server
+
+```mermaid
+flowchart TB
+    HUB(["cobos-apple-mail-mcp<br/>31 MCP tools + email:// resources + recipes"])
+    HUB --> R["Read &amp; search<br/>get_email · list/get_emails<br/>search (FTS5 · semantic · attachment text)<br/>threads · links · export"]
+    HUB --> K["Knowledge<br/>inbox overview · needs-response<br/>awaiting-reply · top senders<br/>statistics · contacts"]
+    HUB --> W["Write — safety-gated<br/>compose / reply / forward · drafts<br/>move · flag-color · mark read<br/>mailboxes · trash · undo_last"]
+    HUB --> A["Automate<br/>Mail rules (list/enable/disable/delete)<br/>unsubscribe (RFC 8058 one-click)"]
+    classDef hub fill:#2d6cdf,stroke:#1b3a75,color:#fff
+    class HUB hub
+```
+
 ---
 
 ## What it is, and how it works
@@ -29,16 +55,17 @@ that needs to actually *do* email work:
 
 `cobos-apple-mail-mcp` runs both paths in one server:
 
-```
-                  MCP tools · resources (email://…) · prompts/recipes
-                                      │
-                       all WRITES pass through guard()
-                  ┌───────────────────┴───────────────────┐
-            ReadBackend                              WriteBackend
-       (Envelope Index + .emlx + FTS5)            (AppleScript/JXA)
-                  └─────────── bridged by ───────────────┘
-                    canonical RFC822 Message-ID
-                 (core/resolver.py — read-back verified)
+```mermaid
+flowchart TB
+    MCP["MCP client — tools · email:// resources · recipes"]
+    MCP -->|"every write"| GUARD{"guard()<br/>read-only · batch caps<br/>dry-run · confirm · undo"}
+    GUARD --> READ["ReadBackend — fast, never touches Mail.app<br/>Envelope Index + .emlx + FTS5 index"]
+    GUARD --> WRITE["WriteBackend<br/>AppleScript / JXA via osascript"]
+    DISK[("~/Library/Mail<br/>on disk")] -->|"read immutable"| READ
+    WRITE -->|"send / move / flag"| MAIL["Mail.app"]
+    READ -. "canonical RFC822 Message-ID<br/>(read-back verified — never a fuzzy subject match)" .-> WRITE
+    classDef safe fill:#e8a838,stroke:#8a5a00,color:#222
+    class GUARD safe
 ```
 
 Reads never touch Mail.app at all — they query a local FTS5 index built from the same on-disk
@@ -230,6 +257,19 @@ write your own.
 
 ## Install
 
+The whole path, from install to asking your agent about your inbox:
+
+```mermaid
+flowchart LR
+    A["1 · Install<br/>uvx / pipx / .pyz"] --> B["2 · Permissions<br/>Full Disk Access<br/>+ Automation"]
+    B --> C["3 · init<br/>config.toml"]
+    C --> D["4 · index build<br/>local FTS5 index"]
+    D --> E["5 · Register<br/>with your MCP client"]
+    E --> F["6 · Ask your agent<br/>'what needs a reply?'"]
+    classDef done fill:#3f9142,stroke:#245127,color:#fff
+    class A,B,C,D,E,F done
+```
+
 ### Requirements
 
 - macOS, with Apple Mail configured with at least one account.
@@ -239,12 +279,17 @@ write your own.
   Security. Full instructions:
   [Permissions & troubleshooting](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Permissions-and-troubleshooting).
 
-### pipx / uvx / pip
+### uvx / pipx / pip
+
+`uvx` is the zero-install path most MCP clients use — it fetches and runs on demand:
 
 ```bash
-pipx install cobos-apple-mail-mcp
-# or: uvx --from cobos-apple-mail-mcp apple-mail-mcp --help
-# or: pip install cobos-apple-mail-mcp
+uvx cobos-apple-mail-mcp serve            # run the server directly (no install)
+
+# or install a persistent CLI:
+pipx install cobos-apple-mail-mcp         # or: pip install cobos-apple-mail-mcp
+# with optional PDF/DOCX attachment-text search:
+pipx install "cobos-apple-mail-mcp[attachments]"
 
 apple-mail-mcp init          # writes ~/.cobos-apple-mail-mcp/config.toml
 apple-mail-mcp index build   # first full index build
