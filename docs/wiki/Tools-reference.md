@@ -44,7 +44,7 @@ and its CLI flag (CLI flags are kebab-case, e.g. `to_mailbox` → `--to-mailbox`
 
 | Tool | Parameters | Notes |
 |---|---|---|
-| `compose_email` | `account, to, subject, body, cc?, bcc?, attachments?, mode=send\|draft\|open, body_html?, from_address?` | `body_html` always opens a draft for review — never auto-sent (see [Architecture](Architecture.md)) |
+| `compose_email` | `account, to, subject, body, cc?, bcc?, attachments?, mode=send\|draft\|open, body_html?, from_address?` | `body_html` always opens a draft for review — never auto-sent (see [Architecture](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Architecture)) |
 | `reply_to_email` | `message_id, reply_body, reply_to_all=false, cc?, bcc?, attachments?, mode=send\|draft\|open, body_html?, account?, mailbox?` | uses Mail's native `reply()` for correct threading headers |
 | `forward_email` | `message_id, to, message?, cc?, bcc?, mode=send\|draft\|open, account?, mailbox?` | |
 | `create_rich_email_draft` | `account, html_body, subject?, to?, text_body?, cc?, bcc?, from_address?` | always a draft; builds a real MIME `.eml` and opens it via Mail |
@@ -58,7 +58,7 @@ and its CLI flag (CLI flags are kebab-case, e.g. `to_mailbox` → `--to-mailbox`
 
 ## Resources (`email://...`)
 
-See [Resources and prompts-recipes](Resources-and-prompts-recipes.md).
+See [Resources and prompts-recipes](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Resources-and-prompts-recipes).
 
 ## Errors
 

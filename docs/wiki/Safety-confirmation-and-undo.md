@@ -66,7 +66,7 @@ CREATE TABLE undo_journal (
 
 One `batch_id` per tool call; one row per affected message. `account_name` (despite the column
 name) stores the JXA-addressable account name, not the disk UUID — see
-[Identity & resolution](Identity-and-resolution.md).
+[Identity & resolution](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Identity-and-resolution).
 
 ## Honesty over completeness
 

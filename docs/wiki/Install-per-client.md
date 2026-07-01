@@ -18,7 +18,7 @@ correctly.
 All examples below assume `apple-mail-mcp` is on `$PATH` (via pipx/uvx/pip). For the single-file
 `.pyz`, replace the command/args with `"command": "python3.12", "args":
 ["/absolute/path/apple-mail-mcp.pyz", "serve", ...]` (substitute the Python minor version that
-actually built the `.pyz` — see [Single-file packaging](Single-file-packaging.md) for why a
+actually built the `.pyz` — see [Single-file packaging](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Single-file-packaging) for why a
 generic `python3` can fail with a confusing `ModuleNotFoundError`). **Absolute paths are
 required**, since the client launches the process from its own working directory, not yours.
 
@@ -108,7 +108,7 @@ apple-mail` (starts the server and lists its tools) or `kimi mcp list`. Inside t
   `command: "/Users/you/.local/bin/apple-mail-mcp"` (find it with `which apple-mail-mcp`).
 - Permission grants (Full Disk Access, Automation) are tied to the actual process that runs the
   server, which may be the client app itself if it launches subprocesses under its own bundle
-  identity — see [Permissions & troubleshooting](Permissions-and-troubleshooting.md) if writes or
+  identity — see [Permissions & troubleshooting](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Permissions-and-troubleshooting) if writes or
   indexing fail after a config change that worked from a terminal.
 - `--read-only` can be added to `args` (`["serve", "--read-only"]`) for any of the above if you
   only want read/search/triage access from that particular client.

@@ -39,7 +39,7 @@ uv run ruff check src tests
 The only things this suite cannot verify without a real, fully-configured Mac: the actual
 `write/scripts/mail_core.js` JXA against a live Mail.app (compose/reply/forward/move/trash/
 drafts), and the Apple `NaturalLanguage`/Foundation Models integrations (PyObjC and Swift-helper
-runtime behavior — see [Search](Search.md) and the
+runtime behavior — see [Search](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Search) and the
 [`swift/foundation-models-summarizer/README.md`](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/blob/main/swift/foundation-models-summarizer/README.md)
 for what was verified by compiling vs. what needs manual verification).
 
@@ -54,9 +54,9 @@ for what was verified by compiling vs. what needs manual verification).
 5. A single real `move`, then `apple-mail-mcp undo-last` to confirm the round-trip.
 6. `update_email_status` flag/unflag.
 7. Confirm `--read-only` blocks every write tool (should fail in milliseconds, never launching
-   Mail.app — see [Performance & benchmarks](Performance-and-benchmarks.md) for why this is
+   Mail.app — see [Performance & benchmarks](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Performance-and-benchmarks) for why this is
    specifically checked).
-8. Register with an actual MCP client (see [Install per client](Install-per-client.md)) and run
+8. Register with an actual MCP client (see [Install per client](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Install-per-client)) and run
    `recipe run daily-triage`.
 
 ## Docs-as-you-go (the "Definition of Done")

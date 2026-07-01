@@ -14,34 +14,34 @@ is the fast-routing index for anyone (human or agent) working on the code itself
 
 ## Pages
 
-- **[Architecture](Architecture.md)** — the dual-path design, the diagram, the read→write flow,
+- **[Architecture](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Architecture)** — the dual-path design, the diagram, the read→write flow,
   module map.
-- **[Apple Mail on-disk format](Apple-Mail-on-disk-format.md)** — Envelope Index schema,
+- **[Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format)** — Envelope Index schema,
   `.emlx`/`.partial.emlx` layout, ROWID↔Message-ID mapping, Cocoa-epoch timestamps, version
   directories.
-- **[Identity & resolution](Identity-and-resolution.md)** — the canonical-id design, the
+- **[Identity & resolution](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Identity-and-resolution)** — the canonical-id design, the
   resolver algorithm, `MultipleMatches`, the `resolve_cache`.
-- **[Safety, confirmation & undo](Safety-confirmation-and-undo.md)** — `guard()`, batch caps,
+- **[Safety, confirmation & undo](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Safety-confirmation-and-undo)** — `guard()`, batch caps,
   dry_run/confirm, the undo journal and its honest limits.
-- **[Indexing and watch](Indexing-and-watch.md)** — the inventory-diff algorithm, crash-safe
+- **[Indexing and watch](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Indexing-and-watch)** — the inventory-diff algorithm, crash-safe
   bulk build, the `--watch` loop, dead-letter handling, staleness.
-- **[Search](Search.md)** — the FTS5 schema, BM25 weights, scopes, the `SearchBackend` seam,
+- **[Search](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Search)** — the FTS5 schema, BM25 weights, scopes, the `SearchBackend` seam,
   trigram, hybrid/semantic search.
-- **[Threading and knowledge](Threading-and-knowledge.md)** — JWZ threading, the
+- **[Threading and knowledge](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Threading-and-knowledge)** — JWZ threading, the
   awaiting-reply/needs-response heuristics, analytics.
-- **[Tools reference](Tools-reference.md)** — every tool's parameters, output shape, and backend.
-- **[Resources and prompts-recipes](Resources-and-prompts-recipes.md)** — the `email://...`
+- **[Tools reference](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Tools-reference)** — every tool's parameters, output shape, and backend.
+- **[Resources and prompts-recipes](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Resources-and-prompts-recipes)** — the `email://...`
   resources and how to author/run a recipe.
-- **[Configuration reference](Configuration-reference.md)** — `config.toml`, `APPLE_MAIL_*` env
+- **[Configuration reference](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Configuration-reference)** — `config.toml`, `APPLE_MAIL_*` env
   vars, precedence, every setting.
-- **[Permissions and troubleshooting](Permissions-and-troubleshooting.md)** — Full Disk Access,
+- **[Permissions and troubleshooting](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Permissions-and-troubleshooting)** — Full Disk Access,
   Automation, common errors.
-- **[Single-file packaging](Single-file-packaging.md)** — building and running
+- **[Single-file packaging](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Single-file-packaging)** — building and running
   `apple-mail-mcp.pyz`.
-- **[Install per client](Install-per-client.md)** — Claude Desktop/Cowork, Codex, Kimi, plus the
+- **[Install per client](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Install-per-client)** — Claude Desktop/Cowork, Codex, Kimi, plus the
   MCP Inspector.
-- **[Performance and benchmarks](Performance-and-benchmarks.md)** — methodology and numbers.
-- **[Development and contributing](Development-and-contributing.md)** — testing without a Mac,
+- **[Performance and benchmarks](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Performance-and-benchmarks)** — methodology and numbers.
+- **[Development and contributing](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Development-and-contributing)** — testing without a Mac,
   CI, release process.
 
 ## Knowledge map (subsystem → source → page)

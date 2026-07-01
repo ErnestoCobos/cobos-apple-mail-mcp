@@ -27,13 +27,13 @@ still a synthetic-only or extrapolated number.
   "sub-100ms at any scale" claim from before this measurement was wrong and has been corrected.
 - **First full index build**: 210,152 messages in 679.6s (`IndexBuildResult.duration_sec`) — about
   3.2ms/message, one-time, includes HTML→text conversion and a full JWZ re-thread. `failed: 0` —
-  see [Apple Mail on-disk format](Apple-Mail-on-disk-format.md) for the malformed-header
+  see [Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format) for the malformed-header
   sanitization that made this possible; the first attempt against this same mailbox crashed
   partway through before that fix.
 - `get_inbox_overview`, `get_needs_response`, `get_email_thread`: all sub-second, computed
   entirely from the local index with zero Mail.app/AppleScript involvement.
 - `list_accounts`/`account` fields on every read tool: currently the raw account UUID, not a
-  human display name — see [Tools reference](Tools-reference.md) for why and what would fix it.
+  human display name — see [Tools reference](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Tools-reference) for why and what would fix it.
 
 ### Measured (synthetic fixtures, low message counts)
 
@@ -43,7 +43,7 @@ still a synthetic-only or extrapolated number.
   mailbox above.
 - `--read-only` blocking a write tool: ~1-6ms (a real regression was caught and fixed here — an
   earlier version took **~20 seconds** because it resolved the message via JXA before checking
-  `--read-only`; see [Safety, confirmation & undo](Safety-confirmation-and-undo.md)).
+  `--read-only`; see [Safety, confirmation & undo](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Safety-confirmation-and-undo)).
 
 ### Still a design target, not directly measured
 

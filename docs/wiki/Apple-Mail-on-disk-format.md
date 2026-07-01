@@ -91,7 +91,7 @@ name+addr, message id fields, body, attachment names — is swept through
 `ParsedEmlx` is returned. Found by running a full index build against a real 209k-message,
 multi-account mailbox for the first time — years of varied real-world mail hits encoding edge
 cases synthetic test fixtures never do. `read/indexer.py::_flush_batch()` adds a second layer of
-defense (see [Indexing and watch](Indexing-and-watch.md)) in case anything still slips through.
+defense (see [Indexing and watch](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Indexing-and-watch)) in case anything still slips through.
 
 ## The identity bridge: ROWID, Message-ID, and Mail's internal id
 
@@ -107,5 +107,5 @@ Three distinct identifiers exist for the same message:
    brackets).
 
 This project's canonical id (exposed to every MCP tool) is the **normalized RFC822 Message-ID** —
-see [Identity & resolution](Identity-and-resolution.md) for the full design, including the
+see [Identity & resolution](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Identity-and-resolution) for the full design, including the
 `amid:` opaque-handle fallback for drafts that don't have one yet.

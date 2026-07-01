@@ -51,7 +51,7 @@ Implemented in `read/indexer.py::inventory_diff()`. A move only updates `emlx_pa
    mail actually shows up; synthetic fixtures never hit this.
 4. Apply `deleted`/`moved`.
 5. If `full`: rebuild `emails_fts` (delete + `INSERT...SELECT`, **not** the bare `'rebuild'`
-   command — see [Search](Search.md) for why), recreate the triggers, optimize, and rebuild the
+   command — see [Search](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Search) for why), recreate the triggers, optimize, and rebuild the
    trigram table if `enable_trigram`.
 6. If anything changed: recompute JWZ threading for the whole index (`read/threader.py::
    index_threads()` — cheap enough at personal-mailbox scale to just rerun, see that page).

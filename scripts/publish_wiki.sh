@@ -29,6 +29,26 @@ echo "Syncing docs/wiki/ -> wiki repo ..."
 # longer exist in docs/wiki/ but never touching the wiki repo's own .git.
 rsync -a --delete --exclude='.git' docs/wiki/ "$WORKDIR/"
 
+# GitHub's wiki renderer (unlike GitHub Pages/Jekyll) does NOT strip YAML
+# frontmatter -- verified live: the `covers`/`last_verified` block rendered
+# as garbled literal text (and a bogus heading) at the top of every page.
+# That block only exists for scripts/check_docs_sync.py's drift guard, so
+# docs/wiki/ (the source of truth) keeps it, but the actually-published
+# pages should not show it.
+python3 - "$WORKDIR" <<'PYEOF'
+import pathlib
+import re
+import sys
+
+root = pathlib.Path(sys.argv[1])
+frontmatter = re.compile(r"\A---\n.*?\n---\n\n?", re.DOTALL)
+for f in root.glob("*.md"):
+    text = f.read_text()
+    stripped = frontmatter.sub("", text, count=1)
+    if stripped != text:
+        f.write_text(stripped)
+PYEOF
+
 cd "$WORKDIR"
 git add -A
 if git diff --cached --quiet; then

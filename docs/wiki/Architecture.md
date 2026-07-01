@@ -42,7 +42,7 @@ wrapper that resolves its target via `core/resolver.py`, then passes through
 2. `core/resolver.py::resolve()` turns that id into a `ResolvedMessage` (account_name,
    mailbox_name, mail_int_id) — scoped by hint → cache → the read layer's own context → a bounded
    broad scan, with **mandatory read-back verification** (see
-   [Identity & resolution](Identity-and-resolution.md)).
+   [Identity & resolution](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Identity-and-resolution)).
 3. `core/safety.py::guard()` checks `--read-only`, batch limits, `dry_run`, and `confirm` —
    *before* any JXA call when the request is going to be rejected anyway (read-only fails in
    milliseconds, never touching `osascript`).

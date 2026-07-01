@@ -68,10 +68,10 @@ python3.12 apple-mail-mcp.pyz serve     # match whatever scripts/build_pyz.sh pr
 
 If you distribute a built `.pyz` to others, tell them which Python minor version it requires (CI
 release builds pin one specific version for this reason — see
-[Development & contributing](Development-and-contributing.md)).
+[Development & contributing](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Development-and-contributing)).
 
 Register with an MCP client using `"command": "python3.12", "args": ["/absolute/path/apple-mail-mcp.pyz", "serve"]`
-(substitute your actual matching version) — see [Install per client](Install-per-client.md).
+(substitute your actual matching version) — see [Install per client](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Install-per-client).
 
 ## Architectural rules that make this work (baked in from the start)
 
@@ -81,8 +81,8 @@ Register with an MCP client using `"command": "python3.12", "args": ["/absolute/
    `skills/loader.py::_skills_root()`.
 2. **Every optional native dependency is imported lazily and guarded**: `watchfiles`,
    `sqlite-vec`, `pyobjc`/`NaturalLanguage`, `onnxruntime`. The core `.pyz` runs without any of
-   them installed, degrading each feature gracefully (see [Search](Search.md) and
-   [Indexing and watch](Indexing-and-watch.md) for what each degrades to).
+   them installed, degrading each feature gracefully (see [Search](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Search) and
+   [Indexing and watch](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Indexing-and-watch) for what each degrades to).
 3. **The `sqlite-vec` loadable extension** is loaded via the package's own
    `sqlite_vec.load(conn)` API (`storage/database.py::try_load_sqlite_vec()`), which resolves its
    bundled binary path itself — correct under both a normal install and a shiv-extracted run,
