@@ -80,11 +80,22 @@ had:
 
 ## Performance
 
+Measured against a real 7-account, 210,152-message mailbox (not a synthetic benchmark):
+
 - Single `get_email` fetch: low single-digit milliseconds (reads one `.emlx` file).
-- Full-mailbox `search`: sub-100ms BM25-ranked, even at hundreds of thousands of messages,
-  against a warm FTS5 index.
-- Index build: ~30x faster than scripting Mail.app for the same scan, because it never launches
-  AppleScript — it walks `.emlx` files and an immutable SQLite read directly.
+- Full-mailbox `search` for a realistic, selective term (`"invoice"`, or `"meeting"` scoped to
+  subject): **9-20ms**, BM25-ranked. This is the common case.
+- A deliberately non-selective single-word query matching a large fraction of the whole corpus
+  (e.g. `"the"`, matching ~39% of all 210k messages here) is **not** sub-100ms — BM25 has to rank
+  tens of thousands of candidates before returning the top page, observed at 0.3-1.6s depending on
+  system load. Real queries are essentially never this unselective; this is a documented edge
+  case, not a hidden one.
+- First `index build --full`: one-time, ~3ms/message (679.6s / 210,152 messages here) — includes
+  HTML→text conversion and full JWZ re-threading, not just parsing. Every build after that is
+  incremental (`index build` without `--full`, or `--watch`) and only touches what changed.
+- Index build (incremental) is far faster than scripting Mail.app for the same scan, because it
+  never launches AppleScript — it walks changed `.emlx` files and an immutable SQLite read
+  directly.
 - `--watch` incremental updates: new mail typically reflected in the index within a couple of
   seconds of arrival, debounced and batched.
 
@@ -131,20 +142,23 @@ search — every option is commented inline. Defaults work for most setups.
 ```bash
 $ apple-mail-mcp index build --full
 {
-  "added": 209280,
+  "added": 210152,
   "changed": 0,
   "deleted": 0,
   "moved": 0,
   "failed": 0,
-  "duration_sec": 41.7,
+  "duration_sec": 679.6,
   "full": true
 }
 ```
 
-(Numbers scale with your mailbox — a few hundred emails finishes in under a second; a
-few-hundred-thousand-message mailbox spanning several accounts takes under a minute. `failed`
-counts messages that couldn't be parsed — a handful is normal for years-old or malformed mail;
-inspect them anytime with `apple-mail-mcp index status`, they never block the rest of the build.)
+(Real numbers from a first full build against a 7-account, 210k-message mailbox on this project's
+own dev machine — about 11 minutes, or ~3ms/message, one-time. A mailbox in the low thousands
+finishes in a few seconds. `--watch` (or a plain `index build` without `--full` afterwards) is
+incremental from here — only new/changed/deleted mail gets reparsed, typically reflected within a
+couple of seconds. `failed` counts messages that couldn't be parsed at all; a handful is normal
+across years of varied real-world mail — inspect them anytime with `apple-mail-mcp index status`,
+they're dead-lettered and never block the rest of the build.)
 
 **4. Confirm it's live.**
 
@@ -153,7 +167,7 @@ $ apple-mail-mcp index status
 {
   "mail_dir": "/Users/you/Library/Mail/V10",
   "envelope_index_available": true,
-  "total_indexed": 209280,
+  "total_indexed": 210152,
   "pending_added": 0,
   "pending_changed": 0,
   "stale": false,

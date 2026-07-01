@@ -15,7 +15,7 @@ and its CLI flag (CLI flags are kebab-case, e.g. `to_mailbox` → `--to-mailbox`
 
 | Tool | Parameters | Backend |
 |---|---|---|
-| `list_accounts` | — | index (UUID-based; no JXA dependency for the core build) |
+| `list_accounts` | — | index. **`name` is currently the raw account UUID directory name, not a human display name** (e.g. "Work"/"iCloud") — verified against a real 7-account mailbox: the on-disk Envelope Index has no `accounts` table and `mailboxes.url` embeds only the UUID, so there's no display-name mapping to read on the disk-only path. That mapping lives in macOS's separate `~/Library/Accounts/Accounts4.sqlite`, not read by this tool. Chosen this way to avoid a JXA dependency in the core read path; `account`/`mailbox` filters on other read tools accept the UUID. |
 | `list_mailboxes` | `account?` | index, with unread/total counts per mailbox |
 | `get_emails` | `account?, mailbox?, filter=all\|unread\|flagged\|today\|last_7_days, limit=50` | index |
 | `get_email` | `message_id, account?, mailbox?` | index (fast fields) + `.emlx` reparse on demand (HTML body, rich attachments) |

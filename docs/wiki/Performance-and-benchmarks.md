@@ -7,34 +7,54 @@ last_verified: 2026-06-30
 
 ## What's actually been measured vs. what's a design target
 
-Honesty matters more than impressive numbers here. During development, every timing claim was
-verified against **synthetic `.emlx` fixtures** (a handful to a few dozen messages) — real,
-working code paths, but not a stress test against a real multi-hundred-thousand-message mailbox.
-The numbers below are split accordingly.
+Honesty matters more than impressive numbers here. Early development timing claims were verified
+only against **synthetic `.emlx` fixtures** (a handful to a few dozen messages); those code paths
+were real but the numbers were extrapolated, not stress-tested. That gap has since been closed —
+below are real measurements against a **real 7-account, 210,152-message mailbox**
+(`apple-mail-mcp index build --full` run to completion, then queried live), alongside what's
+still a synthetic-only or extrapolated number.
 
-### Measured (synthetic fixtures, this machine)
+### Measured against a real 210,152-message mailbox
+
+- **Full-mailbox `search`, realistic/selective query** (`"invoice"`, or `"meeting"` scoped to
+  subject): **9-20ms**, BM25-ranked. This is the common case, and confirms the sub-100ms design
+  target — for queries that actually narrow the corpus.
+- **Full-mailbox `search`, deliberately non-selective single-word query** (`"the"`, matching
+  ~82,900 of 210,152 messages — 39% of the whole mailbox): **0.3-1.6s**, not sub-100ms. Expected
+  FTS5/BM25 behavior when a query barely narrows the candidate set at all — ranking tens of
+  thousands of rows before returning the top page is inherently more expensive than ranking a
+  few thousand. Real-world queries are essentially never this unselective, but the unqualified
+  "sub-100ms at any scale" claim from before this measurement was wrong and has been corrected.
+- **First full index build**: 210,152 messages in 679.6s (`IndexBuildResult.duration_sec`) — about
+  3.2ms/message, one-time, includes HTML→text conversion and a full JWZ re-thread. `failed: 0` —
+  see [Apple Mail on-disk format](Apple-Mail-on-disk-format.md) for the malformed-header
+  sanitization that made this possible; the first attempt against this same mailbox crashed
+  partway through before that fix.
+- `get_inbox_overview`, `get_needs_response`, `get_email_thread`: all sub-second, computed
+  entirely from the local index with zero Mail.app/AppleScript involvement.
+- `list_accounts`/`account` fields on every read tool: currently the raw account UUID, not a
+  human display name — see [Tools reference](Tools-reference.md) for why and what would fix it.
+
+### Measured (synthetic fixtures, low message counts)
 
 - `search()` (`SearchResult.timing_ms`) on a handful of indexed messages: consistently
   sub-millisecond to low-single-digit milliseconds — e.g. `0.24ms`–`0.30ms` observed in
-  end-to-end MCP tool-call tests.
-- `build_index(full=True)` on 1-2 messages: ~3ms (`IndexBuildResult.duration_sec`).
+  end-to-end MCP tool-call tests. Consistent with the low-thousands-of-messages case of the real
+  mailbox above.
 - `--read-only` blocking a write tool: ~1-6ms (a real regression was caught and fixed here — an
   earlier version took **~20 seconds** because it resolved the message via JXA before checking
   `--read-only`; see [Safety, confirmation & undo](Safety-confirmation-and-undo.md)).
 
-### Design targets (informed by the architecture, not yet stress-tested at scale)
+### Still a design target, not directly measured
 
-- Full-mailbox `search`: sub-100ms BM25-ranked at up to roughly a million indexed messages — this
-  is FTS5's documented characteristic at this scale, not a number this project measured directly
-  (no test mailbox of that size was available during development). See
-  [RESEARCH.md](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/blob/main/RESEARCH.md) for
-  the comparison against alternative search engines that led to this expectation.
-- Index build: roughly 30x faster than scripting Mail.app for the same scan, because indexing
-  never launches AppleScript — it's a filesystem walk + an immutable SQLite read. This ratio
-  comes from the architectural difference (process-per-AppleScript-call vs. direct file I/O),
-  not a head-to-head benchmark run in this repo.
+- Index build vs. scripting Mail.app for the same scan: this project has not run a literal
+  head-to-head against an AppleScript-based scanner. The ~3.2ms/message figure above is real; the
+  claim that this beats AppleScript scripting by roughly an order of magnitude or more rests on
+  the architectural difference (one process-per-AppleScript-call vs. direct file I/O in a single
+  process) rather than a benchmark run in this repo.
 - `--watch` latency: new mail typically reflected within a couple of seconds, bounded by the
-  500ms debounce window plus indexing time for the batch.
+  500ms debounce window plus indexing time for the batch — not yet measured against sustained
+  real mail arrival over time.
 
 ### Verified for real (not synthetic): the `osascript` subprocess mechanics
 
