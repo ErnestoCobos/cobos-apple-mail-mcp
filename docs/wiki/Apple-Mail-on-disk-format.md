@@ -83,6 +83,16 @@ Parsing uses the stdlib `email` module with `policy.default`, which gives addres
 access (`msg.get("From").addresses` → `(display_name, addr_spec)` tuples) and `get_body()`/
 `iter_attachments()` helpers — no hand-rolled MIME walking needed.
 
+**Text sanitization.** `email.policy.default`'s lenient handling of malformed/non-UTF-8 headers
+can leave lone UTF-16 surrogates in the decoded `str`; sqlite3 rejects those at insert time with
+`UnicodeEncodeError`. Every string `parse_emlx_bytes()` extracts — subject, sender/recipient
+name+addr, message id fields, body, attachment names — is swept through
+`emlx_parser.py::_sanitize_text()` (`encode('utf-8', 'replace').decode('utf-8')`) before
+`ParsedEmlx` is returned. Found by running a full index build against a real 209k-message,
+multi-account mailbox for the first time — years of varied real-world mail hits encoding edge
+cases synthetic test fixtures never do. `read/indexer.py::_flush_batch()` adds a second layer of
+defense (see [Indexing and watch](Indexing-and-watch.md)) in case anything still slips through.
+
 ## The identity bridge: ROWID, Message-ID, and Mail's internal id
 
 Three distinct identifiers exist for the same message:

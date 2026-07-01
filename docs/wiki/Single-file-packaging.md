@@ -31,6 +31,14 @@ happens from real files on disk, not zipimport. (This is also why the packaging 
 matter less than they might seem to: shiv's bootstrap means *our own* package data ends up as
 real files too, in both a normal pip install and a shiv run.)
 
+`scripts/build_pyz.sh` prefers `.venv/bin/python3`/`.venv/bin/shiv` over whatever `python3`/`shiv`
+are first on `$PATH`, falling back to `$PATH` only if no project `.venv` exists — a *build-time*
+version of the exact gotcha below (a system `python3` can easily be a different minor version
+than the one `uv sync --all-extras` built the venv's `shiv` against, silently producing a `.pyz`
+whose declared build version doesn't match what actually built it). Run `make pyz`/
+`scripts/build_pyz.sh` from a checkout with `.venv/` already set up (`uv sync --all-extras`) to
+get this for free.
+
 ## Run — and a real, verified gotcha about Python versions
 
 ```bash

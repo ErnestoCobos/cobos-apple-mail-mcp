@@ -102,6 +102,118 @@ had:
 - **GPL-3.0-or-later** — the read engine's architecture derives from a GPL-3.0 upstream; see
   [NOTICE](NOTICE).
 
+## Getting started (5-minute walkthrough)
+
+This walks through everything from a clean checkout to asking your MCP client a real question
+about your inbox.
+
+**1. Install and grant permissions.** `pipx install cobos-apple-mail-mcp` (see
+[Install](#install) below for alternatives), then grant **Full Disk Access** to your
+terminal/MCP client host and **Automation** access to Mail.app — System Settings → Privacy &
+Security. Full walkthrough with screenshots-equivalent steps:
+[Permissions & troubleshooting](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Permissions-and-troubleshooting).
+You can skip this step to try read-only search first — indexing only needs Full Disk Access,
+not Automation.
+
+**2. Initialize config.**
+
+```bash
+$ apple-mail-mcp init
+wrote /Users/you/.cobos-apple-mail-mcp/config.toml
+```
+
+Open that file if you want to exclude a mailbox, cap batch sizes further, or turn on semantic
+search — every option is commented inline. Defaults work for most setups.
+
+**3. Build the index.** First run reads every `.emlx` file on disk once; after that,
+`apple-mail-mcp watch` keeps it current incrementally.
+
+```bash
+$ apple-mail-mcp index build --full
+{
+  "added": 209280,
+  "changed": 0,
+  "deleted": 0,
+  "moved": 0,
+  "failed": 0,
+  "duration_sec": 41.7,
+  "full": true
+}
+```
+
+(Numbers scale with your mailbox — a few hundred emails finishes in under a second; a
+few-hundred-thousand-message mailbox spanning several accounts takes under a minute. `failed`
+counts messages that couldn't be parsed — a handful is normal for years-old or malformed mail;
+inspect them anytime with `apple-mail-mcp index status`, they never block the rest of the build.)
+
+**4. Confirm it's live.**
+
+```bash
+$ apple-mail-mcp index status
+{
+  "mail_dir": "/Users/you/Library/Mail/V10",
+  "envelope_index_available": true,
+  "total_indexed": 209280,
+  "pending_added": 0,
+  "pending_changed": 0,
+  "stale": false,
+  ...
+}
+```
+
+**5. Search it.**
+
+```bash
+$ apple-mail-mcp search "invoice" --scope subject --highlight --limit 3
+{
+  "query": "invoice",
+  "mode": "keyword",
+  "scope": "subject",
+  "total_estimated": 14,
+  "returned": 3,
+  "timing_ms": 3.2,
+  "hits": [
+    {
+      "message_ref": {"message_id": "abc123@vendor.example.com", "account": "Work", "mailbox": "INBOX"},
+      "score": 9.4,
+      "subject": "Your <mark>invoice</mark> #4471 is ready",
+      "sender_name": "Billing",
+      "sender_addr": "billing@vendor.example.com",
+      "date_received": 1782950400,
+      "is_read": true,
+      "snippet_html": "Attached is your <mark>invoice</mark> for this billing period..."
+    }
+  ]
+}
+```
+
+Sub-100ms, full-mailbox, no Mail.app scripting involved. Try `apple-mail-mcp overview` or
+`apple-mail-mcp awaiting-reply` next — both are computed instantly from the same local index.
+
+**6. Register with your MCP client** — see [Register with your MCP client](#register-with-your-mcp-client)
+below for Claude Desktop / Claude Code / Codex / Kimi. After restarting the client, try asking
+it something like:
+
+> "What's in my inbox that still needs a reply?"
+
+The client calls `get_needs_response` (or `get_awaiting_reply`) under the hood, gets back
+ranked, structured results in milliseconds, and answers from those — no email content needed to
+round-trip through a slow AppleScript read first. Ask it to draft a reply to one of them and it
+calls `reply_to_email` in draft mode; nothing sends without you reviewing it in Mail.app first
+(and nothing sends *at all* if you registered with `--read-only`).
+
+**7. Try a bundled recipe** — the fastest way to see the knowledge layer in action:
+
+```bash
+$ apple-mail-mcp recipe run daily-triage
+```
+
+or, from your MCP client, just ask for your "daily triage" — recipes are registered as MCP
+prompts, so the client can invoke them by name. See
+[Resources and prompts/recipes](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Resources-and-prompts-recipes)
+for the other four (`inbox-zero`, `awaiting-reply`, `weekly-review`, `thread-catchup`) and how to
+write your own.
+
 ## Install
 
 ### Requirements

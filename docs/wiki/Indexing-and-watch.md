@@ -41,6 +41,14 @@ Implemented in `read/indexer.py::inventory_diff()`. A move only updates `emlx_pa
    yet. A path that fails to parse is recorded in `failed_index_jobs` (dead-letter) **and a path
    that previously failed but now parses successfully has its dead-letter entry cleared** — a
    real bug caught during development (the table only ever grew until this fix).
+   `_flush_batch()` isolates a bad row two ways: `emlx_parser.py::_sanitize_parsed()` strips lone
+   UTF-16 surrogates that `email.policy.default`'s lenient header decoding can leave in place for
+   malformed/non-UTF-8 real-world headers (sqlite3 rejects those with `UnicodeEncodeError`), and
+   if anything still slips through, the batch `executemany` falls back to one row at a time,
+   dead-lettering only the offending row instead of losing — or aborting the build on — the whole
+   500-row batch. Found running a full build against a real 209k-message, multi-account mailbox
+   for the first time, which is exactly the scale where years of varied, occasionally malformed
+   mail actually shows up; synthetic fixtures never hit this.
 4. Apply `deleted`/`moved`.
 5. If `full`: rebuild `emails_fts` (delete + `INSERT...SELECT`, **not** the bare `'rebuild'`
    command — see [Search](Search.md) for why), recreate the triggers, optimize, and rebuild the
