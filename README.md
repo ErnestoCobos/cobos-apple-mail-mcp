@@ -332,7 +332,9 @@ for how to build this yourself (`make pyz`) and the `apple-mail-mcp-full.pyz` va
 > you — backing up `claude_desktop_config.json` and merging in only the one entry, so your other
 > MCP servers are untouched:
 > ```bash
-> bash scripts/install.sh              # add --read-only, --with-attachments, --help
+> bash scripts/install.sh                      # add --read-only, --with-attachments, --help
+> # Claude Desktop only (skips the Claude Code CLI step):
+> bash scripts/install-claude-desktop.sh
 > ```
 > Everything below is the manual path.
 

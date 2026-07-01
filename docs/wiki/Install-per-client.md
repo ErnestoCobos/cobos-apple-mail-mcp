@@ -1,6 +1,7 @@
 ---
 covers:
   - scripts/install.sh
+  - scripts/install-claude-desktop.sh
 last_verified: 2026-07-01
 ---
 
@@ -22,9 +23,22 @@ less install.sh          # read before running anything that edits your config
 bash install.sh
 ```
 
-Options: `--read-only` (register with `serve --read-only`), `--with-attachments` (PDF/DOCX text
-search), `--name NAME` (server key, default `apple-mail`), `--no-index`, `--no-client`, `-y`
-(non-interactive). `bash scripts/install.sh --help` lists them all.
+`install.sh` options: `--read-only` (register with `serve --read-only`), `--with-attachments`
+(PDF/DOCX text search), `--name NAME` (server key, default `apple-mail`), `--no-index`,
+`--no-client` (skip client registration), `-y` (non-interactive). `bash scripts/install.sh --help`
+lists them all.
+
+If you only use **Claude Desktop** (and don't want the Claude Code CLI touched), there's a focused
+variant — same safe config-merge, no `claude mcp add` step:
+
+```bash
+bash scripts/install-claude-desktop.sh
+# raw URL: https://raw.githubusercontent.com/ErnestoCobos/cobos-apple-mail-mcp/main/scripts/install-claude-desktop.sh
+```
+
+Its options: `--read-only`, `--with-attachments`, `--name NAME`, `--no-index`, `--skip-install`
+(the CLI is already installed — just register), `-y`, `-h`. Run
+`bash scripts/install-claude-desktop.sh --help` for the full list.
 
 What it does to your Claude config is deliberately conservative: it registers the server by its
 **absolute path** (GUI apps don't inherit your shell's `PATH`), **backs up**
