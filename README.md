@@ -26,69 +26,15 @@ Full depth lives in the **[GitHub Wiki](https://github.com/ErnestoCobos/cobos-ap
 (architecture, on-disk format, every tool's parameters, configuration reference, troubleshooting).
 This README is the quickstart and the pitch.
 
-## Install in 30 seconds
-
-```bash
-uvx cobos-apple-mail-mcp --help        # try it with zero install (uv)
-# or install it:  pipx install cobos-apple-mail-mcp
-apple-mail-mcp init && apple-mail-mcp index build   # config + build the local index
-```
-
-Then register `apple-mail-mcp serve` with your MCP client (Claude Desktop / Code, Codex, Kimi) —
-[jump to the per-client blocks](#register-with-your-mcp-client). Full walkthrough:
-[Getting started](#getting-started-5-minute-walkthrough). One-time macOS permissions
-(Full Disk Access + Automation) are covered there.
-
-## What you get — 31 tools in one server
-
-```mermaid
-flowchart TB
-    HUB(["cobos-apple-mail-mcp<br/>31 MCP tools + email:// resources + recipes"])
-    HUB --> R["Read &amp; search<br/>get_email · list/get_emails<br/>search (FTS5 · semantic · attachment text)<br/>threads · links · export"]
-    HUB --> K["Knowledge<br/>inbox overview · needs-response<br/>awaiting-reply · top senders<br/>statistics · contacts"]
-    HUB --> W["Write — safety-gated<br/>compose / reply / forward · drafts<br/>move · flag-color · mark read<br/>mailboxes · trash · undo_last"]
-    HUB --> A["Automate<br/>Mail rules (list/enable/disable/delete)<br/>unsubscribe (RFC 8058 one-click)"]
-    classDef hub fill:#2d6cdf,stroke:#1b3a75,color:#fff
-    class HUB hub
-```
-
----
-
-## What it is, and how it works
-
-Apple Mail MCP servers split into two families, and neither half alone is enough for an agent
-that needs to actually *do* email work:
-
-- **Read-only servers** read `~/Library/Mail` directly (the `Envelope Index` SQLite database +
-  `.emlx` files) for millisecond-fast search, but can't send, move, or flag anything.
-- **Write-capable servers** drive Mail.app via AppleScript/JXA — correct for writes, but every
-  *read* also goes through Mail.app scripting, which is 100-1000x slower than reading the files
-  directly, and full-text body search across the whole mailbox usually isn't offered at all.
-
-`cobos-apple-mail-mcp` runs both paths in one server:
-
-```mermaid
-flowchart TB
-    MCP["MCP client — tools · email:// resources · recipes"]
-    MCP -->|"every write"| GUARD{"guard()<br/>read-only · batch caps<br/>dry-run · confirm · undo"}
-    GUARD --> READ["ReadBackend — fast, never touches Mail.app<br/>Envelope Index + .emlx + FTS5 index"]
-    GUARD --> WRITE["WriteBackend<br/>AppleScript / JXA via osascript"]
-    DISK[("~/Library/Mail<br/>on disk")] -->|"read immutable"| READ
-    WRITE -->|"send / move / flag"| MAIL["Mail.app"]
-    READ -. "canonical RFC822 Message-ID<br/>(read-back verified — never a fuzzy subject match)" .-> WRITE
-    classDef safe fill:#e8a838,stroke:#8a5a00,color:#222
-    class GUARD safe
-```
-
-Reads never touch Mail.app at all — they query a local FTS5 index built from the same on-disk
-data Mail itself uses, kept fresh by an incremental `--watch` updater. Writes go through
-AppleScript/JXA (the only correct way to make Mail.app send/move/flag anything), with every
-target message resolved by its canonical Message-ID and **read-back verified** before any
-mutation — never picked by a fuzzy subject match. See
-[Architecture](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Architecture) for the
-full design.
+**Jump to:** [Why it's better](#why-its-better-than-the-alternatives) ·
+[Performance](#performance) · [Quick start](#quick-start-one-command) · [Install](#install) ·
+[Register a client](#register-with-your-mcp-client) ·
+[Docs](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki)
 
 ## Why it's better than the alternatives
+
+Two families of Apple Mail MCP server exist today — fast but read-only, or write-capable but slow.
+This one is both, and fixes what neither got right:
 
 | | Read speed | Full-mailbox body search | Writes | Message targeting | Safety layer | Knowledge/triage |
 |---|---|---|---|---|---|---|
@@ -138,6 +84,53 @@ Measured against a real 7-account, 210,152-message mailbox (not a synthetic benc
 - `--watch` incremental updates: new mail typically reflected in the index within a couple of
   seconds of arrival, debounced and batched.
 
+## What you get — 31 tools in one server
+
+```mermaid
+flowchart TB
+    HUB(["cobos-apple-mail-mcp<br/>31 MCP tools + email:// resources + recipes"])
+    HUB --> R["Read &amp; search<br/>get_email · list/get_emails<br/>search (FTS5 · semantic · attachment text)<br/>threads · links · export"]
+    HUB --> K["Knowledge<br/>inbox overview · needs-response<br/>awaiting-reply · top senders<br/>statistics · contacts"]
+    HUB --> W["Write — safety-gated<br/>compose / reply / forward · drafts<br/>move · flag-color · mark read<br/>mailboxes · trash · undo_last"]
+    HUB --> A["Automate<br/>Mail rules (list/enable/disable/delete)<br/>unsubscribe (RFC 8058 one-click)"]
+    classDef hub fill:#2d6cdf,stroke:#1b3a75,color:#fff
+    class HUB hub
+```
+
+## What it is, and how it works
+
+Apple Mail MCP servers split into two families, and neither half alone is enough for an agent
+that needs to actually *do* email work:
+
+- **Read-only servers** read `~/Library/Mail` directly (the `Envelope Index` SQLite database +
+  `.emlx` files) for millisecond-fast search, but can't send, move, or flag anything.
+- **Write-capable servers** drive Mail.app via AppleScript/JXA — correct for writes, but every
+  *read* also goes through Mail.app scripting, which is 100-1000x slower than reading the files
+  directly, and full-text body search across the whole mailbox usually isn't offered at all.
+
+`cobos-apple-mail-mcp` runs both paths in one server:
+
+```mermaid
+flowchart TB
+    MCP["MCP client — tools · email:// resources · recipes"]
+    MCP -->|"every write"| GUARD{"guard()<br/>read-only · batch caps<br/>dry-run · confirm · undo"}
+    GUARD --> READ["ReadBackend — fast, never touches Mail.app<br/>Envelope Index + .emlx + FTS5 index"]
+    GUARD --> WRITE["WriteBackend<br/>AppleScript / JXA via osascript"]
+    DISK[("~/Library/Mail<br/>on disk")] -->|"read immutable"| READ
+    WRITE -->|"send / move / flag"| MAIL["Mail.app"]
+    READ -. "canonical RFC822 Message-ID<br/>(read-back verified — never a fuzzy subject match)" .-> WRITE
+    classDef safe fill:#e8a838,stroke:#8a5a00,color:#222
+    class GUARD safe
+```
+
+Reads never touch Mail.app at all — they query a local FTS5 index built from the same on-disk
+data Mail itself uses, kept fresh by an incremental `--watch` updater. Writes go through
+AppleScript/JXA (the only correct way to make Mail.app send/move/flag anything), with every
+target message resolved by its canonical Message-ID and **read-back verified** before any
+mutation — never picked by a fuzzy subject match. See
+[Architecture](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Architecture) for the
+full design.
+
 ## Why each major choice (one line each — full rationale in the Wiki and RESEARCH.md)
 
 - **Immutable Envelope Index reads** — `file:...?immutable=1` sidesteps SQLite locking instead
@@ -152,18 +145,92 @@ Measured against a real 7-account, 210,152-message mailbox (not a synthetic benc
 - **GPL-3.0-or-later** — the read engine's architecture derives from a GPL-3.0 upstream; see
   [NOTICE](NOTICE).
 
+## Quick start (one command)
+
+Already sold? On macOS, one command installs the CLI, builds the local index, and registers the
+server with **Claude Desktop / Cowork** — backing up your `claude_desktop_config.json` and merging
+in only the one entry, so your other MCP servers are untouched:
+
+```bash
+bash <(curl -fsSL https://raw.githubusercontent.com/ErnestoCobos/cobos-apple-mail-mcp/main/scripts/install-claude-desktop.sh)
+```
+
+That runs steps 1–5 of the [walkthrough](#getting-started-5-minute-walkthrough) below, plus client
+registration. Prefer control? Pick a manual path in [Install](#install). To try search and triage
+without any write access, add `--read-only` to the script (or register with
+`apple-mail-mcp --read-only serve`). Review-before-run and the general `scripts/install.sh`
+(which also registers the Claude Code CLI) are in
+[Install per client](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Install-per-client).
+
+## Install
+
+### Requirements
+
+- macOS, with Apple Mail configured with at least one account.
+- Python 3.10+.
+- **Full Disk Access** for your terminal/MCP client host (to read `~/Library/Mail` for indexing)
+  and **Automation** permission for Mail.app (to script writes) — System Settings → Privacy &
+  Security. Full instructions:
+  [Permissions & troubleshooting](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Permissions-and-troubleshooting).
+
+### uvx / pipx / pip
+
+`uvx` is the zero-install path most MCP clients use — it fetches and runs on demand:
+
+```bash
+uvx cobos-apple-mail-mcp serve            # run the server directly (no install)
+
+# or install a persistent CLI:
+pipx install cobos-apple-mail-mcp         # or: pip install cobos-apple-mail-mcp
+# with optional PDF/DOCX attachment-text search:
+pipx install "cobos-apple-mail-mcp[attachments]"
+
+apple-mail-mcp init          # writes ~/.cobos-apple-mail-mcp/config.toml
+apple-mail-mcp index build   # first full index build
+apple-mail-mcp index status
+```
+
+Then walk through [Getting started](#getting-started-5-minute-walkthrough) and register with your
+[MCP client](#register-with-your-mcp-client).
+
+### Single file (`.pyz`)
+
+No `pip install` needed — just a matching Python 3.10+ on `$PATH` (run it with the **same Python
+minor version** the release was built with — e.g. `python3.12`; the release notes say which one.
+This is a verified, not theoretical, requirement: the `.pyz` bundles a compiled dependency tied
+to that exact ABI):
+
+```bash
+curl -LO https://github.com/ErnestoCobos/cobos-apple-mail-mcp/releases/latest/download/apple-mail-mcp.pyz
+python3.12 apple-mail-mcp.pyz init
+python3.12 apple-mail-mcp.pyz index build
+```
+
+See [Single-file packaging](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Single-file-packaging)
+for how to build this yourself (`make pyz`) and the `apple-mail-mcp-full.pyz` variant that bundles
+`[watch]`+`[semantic]`.
+
+### Read-only mode
+
+```bash
+apple-mail-mcp --read-only serve
+```
+
+Disables every send/modify tool (draft creation stays allowed). Useful for a first install, or
+any time you want search/triage without write access.
+
 ## Getting started (5-minute walkthrough)
 
-This walks through everything from a clean checkout to asking your MCP client a real question
-about your inbox.
+From a fresh install to asking your MCP client a real question about your inbox. (Already ran the
+[one-command installer](#quick-start-one-command)? It automates steps 1–5 — skip ahead to
+[Register with your MCP client](#register-with-your-mcp-client).)
 
-**1. Install and grant permissions.** `pipx install cobos-apple-mail-mcp` (see
-[Install](#install) below for alternatives), then grant **Full Disk Access** to your
-terminal/MCP client host and **Automation** access to Mail.app — System Settings → Privacy &
-Security. Full walkthrough with screenshots-equivalent steps:
+**1. Grant permissions.** Give **Full Disk Access** to your terminal/MCP client host and
+**Automation** access to Mail.app — System Settings → Privacy & Security. Full walkthrough with
+screenshots-equivalent steps:
 [Permissions & troubleshooting](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Permissions-and-troubleshooting).
-You can skip this step to try read-only search first — indexing only needs Full Disk Access,
-not Automation.
+You can skip this to try read-only search first — indexing only needs Full Disk Access, not
+Automation.
 
 **2. Initialize config.**
 
@@ -243,9 +310,9 @@ $ apple-mail-mcp search "invoice" --scope subject --highlight --limit 3
 Sub-100ms, full-mailbox, no Mail.app scripting involved. Try `apple-mail-mcp overview` or
 `apple-mail-mcp awaiting-reply` next — both are computed instantly from the same local index.
 
-**6. Register with your MCP client** — see [Register with your MCP client](#register-with-your-mcp-client)
-below for Claude Desktop / Claude Code / Codex / Kimi. After restarting the client, try asking
-it something like:
+**6. Register with your MCP client and ask it something.** See
+[Register with your MCP client](#register-with-your-mcp-client) below (Claude Desktop / Claude
+Code / Codex / Kimi). After restarting the client, try asking:
 
 > "What's in my inbox that still needs a reply?"
 
@@ -253,96 +320,13 @@ The client calls `get_needs_response` (or `get_awaiting_reply`) under the hood, 
 ranked, structured results in milliseconds, and answers from those — no email content needed to
 round-trip through a slow AppleScript read first. Ask it to draft a reply to one of them and it
 calls `reply_to_email` in draft mode; nothing sends without you reviewing it in Mail.app first
-(and nothing sends *at all* if you registered with `--read-only`).
+(and nothing sends *at all* if you registered with `--read-only`). Then try a
+[bundled recipe](#try-a-bundled-recipe).
 
-**7. Try a bundled recipe** — the fastest way to see the knowledge layer in action:
+## Register with your MCP client
 
-```bash
-$ apple-mail-mcp recipe run daily-triage
-```
-
-or, from your MCP client, just ask for your "daily triage" — recipes are registered as MCP
-prompts, so the client can invoke them by name. See
-[Resources and prompts/recipes](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Resources-and-prompts-recipes)
-for the other four (`inbox-zero`, `awaiting-reply`, `weekly-review`, `thread-catchup`) and how to
-write your own.
-
-## Install
-
-The whole path, from install to asking your agent about your inbox:
-
-```mermaid
-flowchart LR
-    A["1 · Install<br/>uvx / pipx / .pyz"] --> B["2 · Permissions<br/>Full Disk Access<br/>+ Automation"]
-    B --> C["3 · init<br/>config.toml"]
-    C --> D["4 · index build<br/>local FTS5 index"]
-    D --> E["5 · Register<br/>with your MCP client"]
-    E --> F["6 · Ask your agent<br/>'what needs a reply?'"]
-    classDef done fill:#3f9142,stroke:#245127,color:#fff
-    class A,B,C,D,E,F done
-```
-
-### Requirements
-
-- macOS, with Apple Mail configured with at least one account.
-- Python 3.10+.
-- **Full Disk Access** for your terminal/MCP client host (to read `~/Library/Mail` for indexing)
-  and **Automation** permission for Mail.app (to script writes) — System Settings → Privacy &
-  Security. Full instructions:
-  [Permissions & troubleshooting](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Permissions-and-troubleshooting).
-
-### uvx / pipx / pip
-
-`uvx` is the zero-install path most MCP clients use — it fetches and runs on demand:
-
-```bash
-uvx cobos-apple-mail-mcp serve            # run the server directly (no install)
-
-# or install a persistent CLI:
-pipx install cobos-apple-mail-mcp         # or: pip install cobos-apple-mail-mcp
-# with optional PDF/DOCX attachment-text search:
-pipx install "cobos-apple-mail-mcp[attachments]"
-
-apple-mail-mcp init          # writes ~/.cobos-apple-mail-mcp/config.toml
-apple-mail-mcp index build   # first full index build
-apple-mail-mcp index status
-```
-
-### Single file (`.pyz`)
-
-No `pip install` needed — just a matching Python 3.10+ on `$PATH` (run it with the **same Python
-minor version** the release was built with — e.g. `python3.12`; the release notes say which one.
-This is a verified, not theoretical, requirement: the `.pyz` bundles a compiled dependency tied
-to that exact ABI):
-
-```bash
-curl -LO https://github.com/ErnestoCobos/cobos-apple-mail-mcp/releases/latest/download/apple-mail-mcp.pyz
-python3.12 apple-mail-mcp.pyz init
-python3.12 apple-mail-mcp.pyz index build
-```
-
-See [Single-file packaging](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Single-file-packaging)
-for how to build this yourself (`make pyz`) and the `apple-mail-mcp-full.pyz` variant that bundles
-`[watch]`+`[semantic]`.
-
-### Register with your MCP client
-
-> **One command for Claude Desktop / Cowork:** [`scripts/install.sh`](scripts/install.sh)
-> installs the CLI, writes the config, offers to build the index, and registers the server for
-> you — backing up `claude_desktop_config.json` and merging in only the one entry, so your other
-> MCP servers are untouched:
-> ```bash
-> bash scripts/install.sh                      # add --read-only, --with-attachments, --help
-> # Claude Desktop only (skips the Claude Code CLI step):
-> bash scripts/install-claude-desktop.sh
-> ```
-> No clone? macOS ships `curl` (not `wget`), so run it straight from the web — process
-> substitution keeps the prompts interactive (review first if you prefer: `curl -fsSL <url> -o
-> install.sh`, `less install.sh`, then `bash install.sh`):
-> ```bash
-> bash <(curl -fsSL https://raw.githubusercontent.com/ErnestoCobos/cobos-apple-mail-mcp/main/scripts/install-claude-desktop.sh)
-> ```
-> Everything below is the manual path.
+If you used the [one-command installer](#quick-start-one-command), your server is already
+registered — verify it below, then jump to [Try a bundled recipe](#try-a-bundled-recipe).
 
 Test first with the official inspector:
 
@@ -407,18 +391,24 @@ or: `kimi mcp add apple-mail -- apple-mail-mcp serve`, then `kimi mcp test apple
 Full per-client details, troubleshooting, and absolute-path notes:
 [Install per client](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Install-per-client).
 
-### Read-only mode
+## Try a bundled recipe
+
+The fastest way to see the knowledge layer in action:
 
 ```bash
-apple-mail-mcp --read-only serve
+$ apple-mail-mcp recipe run daily-triage
 ```
 
-Disables every send/modify tool (draft creation stays allowed). Useful for a first install, or
-any time you want search/triage without write access.
+or, from your MCP client, just ask for your "daily triage" — recipes are registered as MCP
+prompts, so the client can invoke them by name. See
+[Resources and prompts/recipes](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Resources-and-prompts-recipes)
+for the other four (`inbox-zero`, `awaiting-reply`, `weekly-review`, `thread-catchup`) and how to
+write your own.
 
 ## CLI usage
 
-Every tool is also a standalone CLI subcommand with JSON output:
+Every tool is also a standalone CLI subcommand with JSON output (the same tools your MCP client
+calls — handy from a shell or a script):
 
 ```bash
 apple-mail-mcp search "invoice" --scope subject --highlight
