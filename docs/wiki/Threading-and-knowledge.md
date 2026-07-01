@@ -12,6 +12,25 @@ be orders of magnitude slower for the same aggregate/graph queries.
 
 ## JWZ threading
 
+```mermaid
+flowchart TD
+    P["Phantom container<br/>mid=A<br/>(referenced, no row)"]:::phantom
+    R1["Real message<br/>mid=B<br/>References: A"]:::real
+    R2["Real message<br/>mid=C<br/>In-Reply-To: A"]:::real
+    R3["Real reply<br/>mid=D<br/>References: A C"]:::real
+
+    P --> R1
+    P --> R2
+    R2 --> R3
+
+    N["get_or_create A<br/>row stays None -> phantom<br/>still groups its real children"]
+
+    classDef phantom fill:#fff3cd,stroke:#b8860b,stroke-dasharray:5 3,color:#333
+    classDef real fill:#d4edda,stroke:#28a745,color:#333
+```
+
+_A phantom container (referenced Message-ID A with no indexed row) still groups its real children B, C, and D into one conversation tree._
+
 `read/threader.py` implements the classic JWZ (Jamie Zawinski, 1997) algorithm, still the basis
 of most mail clients' thread reconstruction, run entirely against indexed `message_id`/
 `in_reply_to`/`references_ids` columns (no `.emlx` reparse needed):
@@ -43,6 +62,25 @@ earliest real message in the tree.
 rather than persisting a separate parent-pointer column.
 
 ## Triage heuristics
+
+```mermaid
+flowchart TD
+    Start["Unread, unanswered,<br/>non-bulk inbox message"] --> Q{"text contains<br/>a question mark?"}
+    Q -->|yes +3| Req
+    Q -->|no| Req
+    Req{"request cue?<br/>can you / please /<br/>review / confirm / deadline"} -->|yes +2| Urg
+    Req -->|no| Urg
+    Urg{"urgency cue or flagged?<br/>urgent / asap / eod"} -->|yes +3| Age
+    Urg -->|no| Age
+    Age["+ min 3, days unread"] --> Cmp{"score >= threshold<br/>(default 4)?"}
+    Cmp -->|no| Drop["skip message"]
+    Cmp -->|yes| Rank{"rank by score"}
+    Rank -->|">= 7"| High["HIGH"]
+    Rank -->|">= 5"| Med["MEDIUM"]
+    Rank -->|else| Norm["NORMAL"]
+```
+
+_get_needs_response accumulates +3 for a question, +2 for a request cue, +3 for urgency/flagged, plus min(3, days unread), then drops anything below the threshold and ranks the rest HIGH/MEDIUM/NORMAL._
 
 No universally agreed definition of "needs a reply" exists in the literature — these are
 transparent, tunable heuristics, not a black-box classifier.

@@ -6,6 +6,21 @@ last_verified: 2026-06-30
 
 # Configuration reference
 
+```mermaid
+flowchart TD
+    D["Built-in defaults<br/>(pydantic model fields)"] --> M1["merged = {}"]
+    M1 --> T["_load_toml(path)<br/>path from --config or<br/>APPLE_MAIL_CONFIG_PATH"]
+    T -->|"_deep_merge"| E["_env_overrides(env)<br/>APPLE_MAIL_SECTION_KEY"]
+    E -->|"_deep_merge"| C["cli_overrides<br/>e.g. --read-only"]
+    C -->|"_deep_merge (if present)"| V["Config.model_validate(merged)<br/>defaults fill any gaps"]
+    V --> R["Effective Config"]
+
+    note1["Later merge wins per key:<br/>CLI &gt; env &gt; config.toml &gt; defaults"]
+    C -.-> note1
+```
+
+_load_config layers config.toml, then APPLE_MAIL_* env overrides, then CLI overrides via successive _deep_merge calls, so each later source wins per key before Config.model_validate fills remaining gaps with defaults._
+
 Precedence: **CLI flags > `APPLE_MAIL_*` env vars > `config.toml` > built-in defaults.**
 Implemented by hand (`config.py::load_config()`) rather than via pydantic-settings' env-binding
 magic, so the merge order is explicit and easy to test without touching real environment state.
@@ -75,6 +90,25 @@ The never-hang knobs — every external call is bounded by one of these.
 | `mail_launch_sec` | `15.0` | how long to wait for Mail.app to become scriptable after launching it |
 
 ## `APPLE_MAIL_*` environment variables
+
+```mermaid
+flowchart TD
+    RAW["raw env string"] --> B{"lower in<br/>true / false?"}
+    B -->|yes| BOOL["bool"]
+    B -->|no| N{"lower in<br/>none / null / empty?"}
+    N -->|yes| NONE["None"]
+    N -->|no| I{"int(raw) ok?"}
+    I -->|yes| INT["int"]
+    I -->|no| F{"float(raw) ok?"}
+    F -->|yes| FLOAT["float"]
+    F -->|no| J{"starts with<br/>[ or { ?"}
+    J -->|yes| JSON["json.loads()<br/>list or dict"]
+    J -->|no| CO{"contains comma?"}
+    CO -->|yes| LIST["split on comma<br/>-&gt; list of str"]
+    CO -->|no| STR["str (unchanged)"]
+```
+
+__coerce_env_value tries each conversion in order — bool, None, int, float, JSON for [ or { prefixes, comma-split list — and falls through to the raw string when none match._
 
 Flat naming: `APPLE_MAIL_<SECTION>_<KEY>`, e.g.:
 

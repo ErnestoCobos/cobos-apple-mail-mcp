@@ -12,6 +12,27 @@ calls `write/*.py` directly.
 
 ## `guard()` checks, in order
 
+```mermaid
+flowchart TD
+    Start(["guard() called<br/>fresh resolved + errors"]) --> RO{"read_only AND<br/>operation_kind != draft?"}
+    RO -->|yes| RaiseRO["raise ReadOnlyMode"]
+    RO -->|no| Batch{"len(resolved) > limit?<br/>move=1 status=10<br/>trash=5 delete=1"}
+    Batch -->|yes| RaiseBatch["raise BatchLimitExceeded<br/>(reject whole call)"]
+    Batch -->|no| BuildPreview["build Preview<br/>reversible = undo_record_fn is not None"]
+    BuildPreview --> Dry{"dry_run?"}
+    Dry -->|yes| RetPreview["return OperationResult<br/>zero mutation"]
+    Dry -->|no| Confirm{"requires_confirm<br/>AND not confirm?"}
+    Confirm -->|yes| RaiseConfirm["raise ConfirmationRequired<br/>(carries preview)"]
+    Confirm -->|no| Apply["for each r: apply_fn(r)"]
+    Apply --> Journal{"undo_record_fn<br/>set?"}
+    Journal -->|yes| Write["journal_write() row<br/>under one batch_id"]
+    Journal -->|no| Skip["no journal entry"]
+    Write --> Done(["return OperationResult"])
+    Skip --> Done
+```
+
+_The guard() control flow: read_only, then batch-limit, then Preview build, then dry_run short-circuit, then confirm gating, then apply_fn per message, and finally undo-journaling only when undo_record_fn was supplied._
+
 1. **`--read-only`** (`config.server.read_only`) blocks every send/modify operation —
    `operation_kind != "draft"`. Draft creation stays allowed (it mutates nothing the user already
    has). Checked **before** resolution is attempted in the batch write tools
@@ -32,6 +53,21 @@ calls `write/*.py` directly.
    there's no separate "stale confirmation token" mechanism needed.
 
 ## What's actually undoable
+
+```mermaid
+flowchart TD
+    Op(["write operation"]) --> Q{"undo_record_fn<br/>passed to guard()?"}
+    Q -->|yes, journaled| Rev["Reversible via undo_last()"]
+    Q -->|no, never journaled| Never["Not undoable"]
+    Rev --> M["move<br/>_undo_move re-resolves, moves back"]
+    Rev --> T["trash / move_to_trash<br/>_undo_move back to origin<br/>(until Trash emptied)"]
+    Rev --> S["mark_read / mark_unread<br/>flag / unflag<br/>_undo_status restores prev_state"]
+    Never --> D["permanent delete<br/>undo_record_fn = None"]
+    Never --> E["empty_trash<br/>separate fn, not journaled"]
+    Never --> Snd["send / reply / forward<br/>sending cannot be undone"]
+```
+
+_Classification of write operations by undoability: move, trash-until-emptied, and status/flag are journaled and reversed by undo_last() via _undo_move or _undo_status, while permanent delete, empty_trash, and send/reply/forward are never journaled and never undoable._
 
 | Operation | Undoable? | Mechanism |
 |---|---|---|

@@ -54,6 +54,22 @@ the `.emlx` file is the authoritative source for everything this project needs.
 
 ## The `.emlx` file format
 
+```mermaid
+flowchart LR
+    RAW["Raw .emlx bytes"] --> N["Find first newline"]
+    N --> BC["byte-count<br/>decimal ASCII"]
+    N --> REST["Bytes after newline"]
+    BC -->|"slice exactly N bytes"| MSG["RFC822 message<br/>msg_bytes"]
+    REST --> MSG
+    REST -->|"remainder after N bytes"| PLIST["XML plist trailer<br/>plist_bytes"]
+    MSG -->|"BytesParser policy.default"| EMAIL["email.message<br/>headers + body"]
+    PLIST -->|"plistlib.loads"| DICT["dict: flags,<br/>date-sent, date-received,<br/>message-id"]
+    EMAIL --> OUT["ParsedEmlx"]
+    DICT --> OUT
+```
+
+_How parse_emlx_bytes splits a raw .emlx into its decimal byte-count header, the exact-length RFC822 message, and the trailing XML plist, then merges both into a ParsedEmlx._
+
 ```
 <byte-count>\n<RFC822 message><XML plist trailer>
 ```
@@ -95,6 +111,27 @@ defense (see [Indexing and watch](https://github.com/ErnestoCobos/cobos-apple-ma
 
 ## The identity bridge: ROWID, Message-ID, and Mail's internal id
 
+```mermaid
+flowchart TD
+    subgraph disk["On disk"]
+        FN["Filename stem<br/>{ROWID}.emlx"]
+        EI["Envelope Index<br/>messages.ROWID"]
+        PL["plist message-id key"]
+        HDR["RFC822 Message-ID header"]
+    end
+    subgraph live["Live Mail via JXA"]
+        MID["message.messageId()<br/>= Message-ID string"]
+        IID["message.id()<br/>internal integer"]
+    end
+    FN ---|"numeric stem ==="| EI
+    HDR -->|"normalize_message_id"| CANON["Canonical id<br/>bracket-stripped Message-ID"]
+    PL -->|"fallback if header absent"| CANON
+    MID --> CANON
+    IID -.->|"distinct, not used as id"| CANON
+```
+
+_The three identifiers for one message — the .emlx filename ROWID (== Envelope Index ROWID), the RFC822 Message-ID, and Mail's internal message.id() — and how only the normalized Message-ID becomes the project's canonical id._
+
 Three distinct identifiers exist for the same message:
 
 1. **Envelope Index `ROWID`** == the `.emlx` filename's numeric stem
@@ -111,6 +148,22 @@ see [Identity & resolution](https://github.com/ErnestoCobos/cobos-apple-mail-mcp
 `amid:` opaque-handle fallback for drafts that don't have one yet.
 
 ## Account display names
+
+```mermaid
+flowchart TD
+    START["resolve_account_names"] --> ROW["Row for account UUID<br/>ZIDENTIFIER matches"]
+    ROW --> CUR["current = this row"]
+    CUR --> CHK{"description or username<br/>non-empty after strip?"}
+    CHK -->|"yes"| NAME["Return display name"]
+    CHK -->|"no"| PAR{"ZPARENTACCOUNT<br/>set?"}
+    PAR -->|"no"| FB["Return None<br/>fall back to raw UUID"]
+    PAR -->|"yes"| HOP{"hops < 5 and<br/>not seen before?"}
+    HOP -->|"no"| FB
+    HOP -->|"yes"| WALK["current = parent row"]
+    WALK --> CHK
+```
+
+_The bounded ZPARENTACCOUNT walk in resolve_account_names: check a row's stripped description/username, else hop to the parent account, capped at 5 hops with a cycle guard before falling back to the raw UUID._
 
 The account UUID directory name has no human-readable counterpart anywhere in Apple Mail's own
 on-disk data (no `accounts` table in the Envelope Index, `mailboxes.url` embeds only the UUID).

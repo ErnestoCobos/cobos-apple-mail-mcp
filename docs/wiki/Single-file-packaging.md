@@ -12,6 +12,22 @@ just a Python 3.10+ interpreter on `$PATH` — no `pip install` step.
 
 ## Build
 
+```mermaid
+flowchart TD
+    S["scripts/build_pyz.sh start"] --> V{"-x .venv/bin/python3<br/>exists?"}
+    V -->|"yes"| P1["BUILD_PYTHON = .venv/bin/python3<br/>SHIV = .venv/bin/shiv"]
+    V -->|"no"| P2["BUILD_PYTHON = command -v python3<br/>SHIV = shiv (from PATH)"]
+    P1 --> C{"shiv found?"}
+    P2 --> C
+    C -->|"no"| E["exit 1: install dev deps<br/>uv sync --all-extras"]
+    C -->|"yes"| R["read BUILD_PYTHON_VERSION<br/>+ BUILD_PYTHON_MINOR"]
+    R --> B1["shiv build core -> apple-mail-mcp.pyz"]
+    B1 --> B2["shiv build .[watch,semantic]<br/>-> apple-mail-mcp-full.pyz"]
+    B2 --> W["print run command:<br/>pythonX.Y dist/...pyz serve"]
+```
+
+_Build-time interpreter selection in build_pyz.sh: it prefers the project .venv's python3/shiv over whatever is first on PATH, bails out if shiv is missing, then builds both the core and full .pyz artifacts and prints the exact run command._
+
 ```bash
 make pyz
 # or directly:
@@ -40,6 +56,20 @@ whose declared build version doesn't match what actually built it). Run `make py
 get this for free.
 
 ## Run — and a real, verified gotcha about Python versions
+
+```mermaid
+flowchart TD
+    A["scripts/build_pyz.sh<br/>(BUILD_PYTHON minor: e.g. 3.12)"] --> B["shiv -c apple-mail-mcp<br/>bundle deps into .pyz"]
+    B --> C["dist/apple-mail-mcp.pyz<br/>embeds compiled wheels<br/>(pydantic-core, Rust ABI)"]
+    C --> D["ship: copy one file<br/>to target machine"]
+    D --> E["python3.X apple-mail-mcp.pyz serve"]
+    E --> F{"run Python minor<br/>== build minor 3.12?"}
+    F -->|"yes"| G["shiv unpacks deps to<br/>per-user cache, runs from disk"]
+    G --> H["server starts (stdio)"]
+    F -->|"no (e.g. 3.14)"| X["ModuleNotFoundError:<br/>pydantic_core._pydantic_core"]
+```
+
+_Build-to-first-run lifecycle: shiv bundles ABI-specific compiled wheels into the .pyz, which unpacks to a per-user cache on first run only when the run-time Python minor version matches the build-time one; a mismatch fails with the pydantic_core import error._
 
 ```bash
 python3 apple-mail-mcp.pyz init

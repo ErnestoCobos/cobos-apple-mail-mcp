@@ -12,6 +12,48 @@ This Wiki is the deep documentation; the [README](https://github.com/ErnestoCobo
 is the quickstart and pitch. [CLAUDE.md](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/blob/main/CLAUDE.md)
 is the fast-routing index for anyone (human or agent) working on the code itself.
 
+```mermaid
+flowchart TB
+    Agent["MCP client / agent"] --> Tools["tools/*<br/>MCP tool surface"]
+
+    Tools --> Resolver["core/resolver.py<br/>id → live message"]
+    Resolver --> Identity["core/identity.py<br/>canonical Message-ID"]
+
+    Tools -->|reads| ReadPath["Read path<br/>direct-on-disk"]
+    Tools -->|writes| WritePath["Write path<br/>via guard()"]
+
+    subgraph Reads["Read path (never writes Mail)"]
+        direction TB
+        EnvReader["read/envelope_reader.py<br/>Envelope Index immutable=1"]
+        Emlx["read/emlx_parser.py<br/>.emlx from disk"]
+        Indexer["read/indexer.py + watcher.py"]
+        IndexDB[("index.db<br/>disposable, rebuildable")]
+        Search["read/search.py + vector_search.py<br/>FTS5 + hybrid"]
+        Threader["read/threader.py + knowledge/*<br/>JWZ threading + triage"]
+        EnvReader --> Indexer
+        Emlx --> Indexer
+        Indexer --> IndexDB
+        IndexDB --> Search
+        IndexDB --> Threader
+    end
+
+    subgraph Writes["Write path"]
+        direction TB
+        Guard["core/safety.py guard()<br/>read_only + batch caps + dry_run"]
+        Undo["core/undo.py<br/>journal + undo_last"]
+        JXA["write/jxa_executor.py<br/>osascript, timeout + kill"]
+        Guard --> JXA
+        Guard --> Undo
+    end
+
+    ReadPath --> Reads
+    WritePath --> Writes
+    JXA --> Mail["Mail.app<br/>AppleScript / JXA"]
+    Resolver -.verify id.-> JXA
+```
+
+_High-level subsystem map: an MCP client hits tools/*, which resolve a canonical Message-ID via core/resolver.py and split into a direct-on-disk read path (Envelope Index and .emlx feeding the disposable index.db for search and threading) and a write path that always passes through core.safety.guard() before write/jxa_executor.py drives Mail.app._
+
 ## Pages
 
 - **[Architecture](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Architecture)** — the dual-path design, the diagram, the read→write flow,

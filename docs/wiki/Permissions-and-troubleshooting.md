@@ -7,6 +7,22 @@ last_verified: 2026-06-30
 
 ## Required macOS permissions
 
+```mermaid
+flowchart TD
+    A["Read tool called"] --> B{"Full Disk Access<br/>granted?"}
+    B -- "No" --> C["~/Library/Mail unreadable<br/>error: full_disk_access_denied"]
+    C --> D["Fall back to JXA read path<br/>slower, but correct"]
+    B -- "Yes" --> E["find_mail_directory<br/>highest V{N} dir"]
+    E --> F{"Envelope Index<br/>opens read-only?"}
+    F -- "Yes" --> G["Use it as fast<br/>supplementary hint"]
+    F -- "No (sqlite error<br/>or missing)" --> H["Degrade: parse .emlx<br/>from disk (authoritative)"]
+    G --> I["Feed index.db"]
+    H --> I
+    D --> I
+```
+
+_Read-path decision tree: with Full Disk Access, reads go disk-direct via find_mail_directory and the read-only Envelope Index (degrading to .emlx parsing on any sqlite error); without it, ~/Library/Mail is unreadable (full_disk_access_denied) and reads fall back to the slower JXA path._
+
 1. **Full Disk Access** — for whatever process runs `apple-mail-mcp` (your terminal, or the MCP
    client host process if it launches the server itself) to read `~/Library/Mail`. System
    Settings → Privacy & Security → Full Disk Access → add the relevant app/binary, then restart
@@ -35,6 +51,23 @@ resolution fails silently per-account and that account's raw UUID is shown inste
 blocks indexing or any other tool.
 
 ## Common errors
+
+```mermaid
+flowchart TD
+    A["Write tool called"] --> B["ensure_mail_running"]
+    B --> C{"is_mail_running<br/>or ping OK<br/>before deadline?"}
+    C -- "No" --> D["error: mail_not_running"]
+    C -- "Yes" --> E["run_osascript<br/>bounded by jxa_call_sec"]
+    E --> F{"Finished before<br/>timeout?"}
+    F -- "No" --> G["Kill process group<br/>error: timeout"]
+    F -- "Yes" --> H{"Exit code 0?"}
+    H -- "Yes" --> I["Return JSON result"]
+    H -- "No" --> J{"stderr says<br/>Mail not running?"}
+    J -- "Yes" --> D
+    J -- "No (Apple Events<br/>denied etc.)" --> K["JXAExecutionError<br/>e.g. automation_permission_denied"]
+```
+
+_Write-path permission gates: ensure_mail_running (mail_not_running if Mail never becomes scriptable), then the bounded osascript call whose expiry triggers a process-group kill (timeout), whose non-zero exit is parsed for 'not running' (mail_not_running) versus any other stderr such as a denied Apple Events grant (automation_permission_denied)._
 
 | Error code | Likely cause | Fix |
 |---|---|---|
