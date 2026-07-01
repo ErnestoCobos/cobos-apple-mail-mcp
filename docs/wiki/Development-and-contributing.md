@@ -2,7 +2,7 @@
 covers:
   - tests/*.py
   - .github/workflows/*.yml
-last_verified: 2026-06-30
+last_verified: 2026-07-01
 ---
 
 # Development & contributing
@@ -106,7 +106,10 @@ stored in the repo or anywhere else** — nothing to leak or rotate. The canonic
 
 1. On PyPI → *Your projects* → (or *Publishing* for a not-yet-existing project) → **Add a pending
    publisher** with: PyPI project name `cobos-apple-mail-mcp`, owner `ErnestoCobos`, repository
-   `cobos-apple-mail-mcp`, workflow filename `publish.yml`.
+   `cobos-apple-mail-mcp`, workflow filename `publish.yml`, and **environment name `pypi`**. That
+   environment name must match the `environment: pypi` the publish job declares — GitHub
+   auto-creates the environment on the first run, and you can later add a required reviewer to it
+   (repo *Settings → Environments*) so a push alone can't publish.
 2. Cut a GitHub Release (or run the *Publish to PyPI* workflow via *Actions → Run workflow*). The
    workflow builds the sdist+wheel and uploads them; PyPI accepts them because the OIDC identity
    matches the pending publisher.

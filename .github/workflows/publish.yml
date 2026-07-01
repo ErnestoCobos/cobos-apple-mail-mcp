@@ -14,6 +14,12 @@ on:
 jobs:
   publish:
     runs-on: ubuntu-latest
+    # Dedicated publishing environment: the PyPI pending-publisher config must
+    # name this same environment ("pypi"), and it's where you can add a required
+    # reviewer so a push alone can't publish. GitHub auto-creates it on first run.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/cobos-apple-mail-mcp
     permissions:
       id-token: write # required for Trusted Publishing (OIDC); no token needed
     steps:
