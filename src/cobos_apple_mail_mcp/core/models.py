@@ -326,3 +326,11 @@ class UndoResult(BaseModel):
     undone: list[MessageRefModel] = Field(default_factory=list)
     failed: dict[str, str] = Field(default_factory=dict)
     count: int
+
+
+class UnsubscribeResult(BaseModel):
+    method: str  # one-click-post | mailto | none-found
+    ok: bool = False
+    target: str | None = None  # the https URL posted to, or the mailto address
+    detail: str | None = None
+    dry_run: bool = False

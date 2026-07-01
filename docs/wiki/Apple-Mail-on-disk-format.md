@@ -88,7 +88,11 @@ Whatever comes after that many bytes is an Apple property list (XML) with supple
 `flags` is a bitfield: bit0=`\Seen` (read), bit1=`\Answered`, bit2=`\Flagged`, bit3=`\Deleted`,
 bit4=`\Draft` (`read/emlx_parser.py::FLAG_SEEN` etc.). Newsletter/bulk-mail detection
 (`_looks_bulk()`) checks the RFC822 headers directly (`List-Unsubscribe`, `List-Id`, `List-Post`,
-`Precedence: bulk|list|junk`, `Auto-Submitted`) rather than anything in the plist.
+`Precedence: bulk|list|junk`, `Auto-Submitted`) rather than anything in the plist. The actual
+`List-Unsubscribe`/`List-Unsubscribe-Post` *values* aren't indexed (only the bulk boolean is); the
+unsubscribe tool re-parses them from the `.emlx` on demand via
+`read/emlx_parser.py::extract_unsubscribe()` (RFC 2369 angle-bracket URIs + RFC 8058 one-click
+detection), the same on-demand pattern as `get_email_links`.
 
 `.partial.emlx` files contain **headers only** — the body's attachments live in a sibling
 `Attachments/{ROWID}/{n}/{filename}` tree instead of being inlined in the MIME body. The parser

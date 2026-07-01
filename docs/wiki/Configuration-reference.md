@@ -88,6 +88,7 @@ The never-hang knobs — every external call is bounded by one of these.
 | `jxa_call_sec` | `20.0` | hard timeout for one `osascript` call (process-group-killed on expiry) |
 | `broad_scan_sec` | `30.0` | reserved for bounding the resolver's last-resort broad scan |
 | `mail_launch_sec` | `15.0` | how long to wait for Mail.app to become scriptable after launching it |
+| `http_sec` | `15.0` | hard timeout for the RFC-8058 one-click unsubscribe `POST` (the never-hang rule applies to network calls too) |
 
 ## `APPLE_MAIL_*` environment variables
 

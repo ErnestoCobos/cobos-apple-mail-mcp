@@ -85,6 +85,7 @@ class TimeoutsSection(BaseModel):
     jxa_call_sec: float = 20.0
     broad_scan_sec: float = 30.0
     mail_launch_sec: float = 15.0
+    http_sec: float = 15.0  # bound for the RFC-8058 one-click unsubscribe POST
 
 
 class Config(BaseModel):

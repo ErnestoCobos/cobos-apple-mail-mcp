@@ -112,3 +112,22 @@ The undo system does not pretend to cover everything. `Preview.reversible` and `
 tell the caller up front whether an operation can be undone at all, and permanent
 delete/empty-trash/send are reported as non-undoable rather than silently accepted with a fake
 promise of recoverability.
+
+## Unsubscribe: a sender-controlled URL
+
+`unsubscribe_from_sender` (`write/unsubscribe.py`) is an outbound action gated by `--read-only`
+like any send, but it also crosses a distinct trust boundary the other write tools don't: the
+target of the RFC-8058 one-click POST comes from a **sender-controlled** header
+(`List-Unsubscribe`). So before any request:
+
+- **https only.** The POST target must start with `https://`; `_post_one_click()` refuses anything
+  else, and a non-https URI never even lands in the candidate list (`emlx_parser.py::
+  extract_unsubscribe()` only collects `https:` URIs, so `http://` or exotic schemes are ignored,
+  not fetched).
+- **No downgrade on redirect.** A custom `HTTPRedirectHandler` refuses to follow a 3xx to any
+  non-https location, so the sender can't bounce the request onto `http://`/`file://`.
+- **Bounded.** The request has a hard timeout (`config.timeouts.http_sec`, default 15s) — the
+  never-hang rule (invariant #4) applies to network calls, not just `osascript`.
+- **Honest result.** Returns `method=one-click-post|mailto|none-found` (with `ok` and `detail`),
+  never a bare boolean, so the caller can tell a real unsubscribe from "this sender offers no
+  standard method, nothing happened". Not journaled/undoable (you can't un-send an unsubscribe).

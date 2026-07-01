@@ -304,6 +304,65 @@ def extract_attachment_bytes(parsed_path: Path, filename: str) -> bytes | None:
     return None
 
 
+@dataclass
+class UnsubscribeInfo:
+    """Parsed List-Unsubscribe / List-Unsubscribe-Post (RFC 2369 / RFC 8058)."""
+
+    https_urls: list[str] = field(default_factory=list)
+    mailto_to: str | None = None
+    mailto_subject: str | None = None
+    one_click: bool = False
+
+
+def _message_from_emlx(path: Path):  # noqa: ANN202
+    raw = path.read_bytes()
+    newline_idx = raw.index(b"\n")
+    byte_count = int(raw[:newline_idx].strip())
+    msg_bytes = raw[newline_idx + 1 : newline_idx + 1 + byte_count]
+    return BytesParser(policy=policy.default).parsebytes(msg_bytes)
+
+
+def extract_unsubscribe(path: Path) -> UnsubscribeInfo:
+    """Parse the source message's List-Unsubscribe headers on demand (not
+    persisted to the index — see get_email_links for the same on-demand
+    pattern). Returns every https: URI, the first mailto: target (address +
+    optional subject), and whether the sender advertises RFC-8058 one-click
+    (`List-Unsubscribe-Post: List-Unsubscribe=One-Click`)."""
+    import re as _re
+    from email.utils import getaddresses
+    from urllib.parse import parse_qs, unquote, urlsplit
+
+    info = UnsubscribeInfo()
+    try:
+        msg = _message_from_emlx(path)
+    except Exception:
+        return info
+
+    raw_lu = msg.get("List-Unsubscribe")
+    lup = str(msg.get("List-Unsubscribe-Post") or "")
+    info.one_click = "one-click" in lup.lower()
+
+    if not raw_lu:
+        return info
+
+    for token in _re.findall(r"<([^<>]+)>", str(raw_lu)):
+        uri = token.strip()
+        lowered = uri.lower()
+        if lowered.startswith("https://"):
+            info.https_urls.append(uri)
+        elif lowered.startswith("mailto:") and info.mailto_to is None:
+            parts = urlsplit(uri)
+            # parts.path is the address; parts.query may carry subject=...
+            addrs = getaddresses([unquote(parts.path)])
+            if addrs and addrs[0][1]:
+                info.mailto_to = addrs[0][1]
+            qs = parse_qs(parts.query)
+            subj = qs.get("subject")
+            if subj:
+                info.mailto_subject = unquote(subj[0])
+    return info
+
+
 _LINK_SCHEME_BLOCKLIST = ("mailto:", "javascript:", "cid:", "data:")
 
 

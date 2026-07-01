@@ -296,6 +296,12 @@ def build_parser() -> argparse.ArgumentParser:
     p_undo.add_argument("--batch-id")
     p_undo.add_argument("--dry-run", action="store_true")
 
+    p_unsub = sub.add_parser("unsubscribe")
+    p_unsub.add_argument("message_id")
+    p_unsub.add_argument("--account")
+    p_unsub.add_argument("--mailbox")
+    p_unsub.add_argument("--dry-run", action="store_true")
+
     return parser
 
 
@@ -749,6 +755,22 @@ def _main(argv: list[str] | None = None) -> int:
 
         _print_json(
             write_tools.undo_last(conn, _jxa(cfg), batch_id=args.batch_id, dry_run=args.dry_run)
+        )
+        return 0
+
+    if args.command == "unsubscribe":
+        from cobos_apple_mail_mcp.tools import write_tools
+
+        _print_json(
+            write_tools.unsubscribe_from_sender(
+                conn,
+                _jxa(cfg),
+                cfg,
+                args.message_id,
+                account=args.account,
+                mailbox=args.mailbox,
+                dry_run=args.dry_run,
+            )
         )
         return 0
 

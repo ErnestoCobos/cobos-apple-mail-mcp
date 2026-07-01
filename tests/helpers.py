@@ -24,6 +24,7 @@ def build_emlx_bytes(
     date_sent: int = 700000000,
     date_received: int | None = None,
     list_unsubscribe: str | None = None,
+    list_unsubscribe_post: str | None = None,
 ) -> bytes:
     headers = [
         f"From: {sender}",
@@ -37,6 +38,8 @@ def build_emlx_bytes(
         headers.append("References: " + " ".join(f"<{r}>" for r in references))
     if list_unsubscribe:
         headers.append(f"List-Unsubscribe: {list_unsubscribe}")
+    if list_unsubscribe_post:
+        headers.append(f"List-Unsubscribe-Post: {list_unsubscribe_post}")
     headers.append(f"Date: {date}")
     headers.append("Content-Type: text/plain; charset=utf-8")
     msg = ("\r\n".join(headers) + "\r\n\r\n" + body + "\r\n").encode("utf-8")

@@ -56,6 +56,7 @@ and its CLI flag (CLI flags are kebab-case, e.g. `to_mailbox` → `--to-mailbox`
 | `manage_trash` | `action=move_to_trash\|delete_permanent\|empty_trash, account, message_ids?, mailbox?, dry_run=true, confirm=false, max_deletes?` | `move_to_trash` undoable; `delete_permanent`/`empty_trash` require `confirm=true`, never undoable, `dry_run` defaults **true** |
 | `save_email_attachment` | `message_id, attachment_name, save_path, account?, mailbox?` | `save_path` is an explicit full path (vs. `get_email_attachment`'s default-directory shape) |
 | `undo_last` | `batch_id?, dry_run=false` | reverses the most recent undoable batch, or a specific one |
+| `unsubscribe_from_sender` | `message_id, account?, mailbox?, dry_run=false` | re-parses the source `.emlx`'s `List-Unsubscribe`/`List-Unsubscribe-Post` on demand; prefers an RFC-8058 one-click **https** POST (stdlib `urllib`, no Mail.app), else sends the `mailto:` unsubscribe via `compose_email`. Returns `method=one-click-post\|mailto\|none-found` (never a bare bool). Outbound → blocked under `--read-only`. See [Safety](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Safety-confirmation-and-undo#unsubscribe-a-sender-controlled-url) for the URL-trust handling. |
 
 ## Resources (`email://...`)
 

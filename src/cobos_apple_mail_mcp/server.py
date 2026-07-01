@@ -579,6 +579,31 @@ def build_server(config: Config) -> FastMCP:
         """Reverse the most recent undoable write batch (move/trash/status/flag only)."""
         return _dump(_undo_last(ctx.conn, ctx.jxa, batch_id=batch_id, dry_run=dry_run))
 
+    @mcp.tool
+    @_wrap_errors
+    def unsubscribe_from_sender(
+        message_id: str,
+        account: str | None = None,
+        mailbox: str | None = None,
+        dry_run: bool = False,
+    ) -> dict:
+        """Unsubscribe from the list a message belongs to. Prefers an RFC-8058
+        one-click https POST (https-only, bounded timeout, no non-https
+        redirect); falls back to sending the mailto: unsubscribe. Returns
+        method=one-click-post|mailto|none-found so you know what happened.
+        Blocked under --read-only (it's an outbound action)."""
+        return _dump(
+            write_tools.unsubscribe_from_sender(
+                ctx.conn,
+                ctx.jxa,
+                ctx.config,
+                message_id,
+                account=account,
+                mailbox=mailbox,
+                dry_run=dry_run,
+            )
+        )
+
     # ---------------------------------------------------------------
     # Resources (email://...) & recipes (skills/<name> -> MCP prompts)
     # ---------------------------------------------------------------

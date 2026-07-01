@@ -10,14 +10,25 @@ from __future__ import annotations
 import sqlite3
 
 from cobos_apple_mail_mcp.config import Config
-from cobos_apple_mail_mcp.core.models import Attachment, OperationResult, UndoResult
+from cobos_apple_mail_mcp.core.models import (
+    Attachment,
+    OperationResult,
+    UndoResult,
+    UnsubscribeResult,
+)
 from cobos_apple_mail_mcp.core.undo import undo_last as _undo_last
-from cobos_apple_mail_mcp.write import attachments, compose, drafts, organize
+from cobos_apple_mail_mcp.write import attachments, compose, drafts, organize, unsubscribe
 from cobos_apple_mail_mcp.write.jxa_executor import JXAExecutor
 
 
 def compose_email(conn: sqlite3.Connection, jxa: JXAExecutor, config: Config, **kwargs) -> dict:
     return compose.compose_email(conn, jxa, config, **kwargs)
+
+
+def unsubscribe_from_sender(
+    conn: sqlite3.Connection, jxa: JXAExecutor, config: Config, message_id: str, **kwargs
+) -> UnsubscribeResult:
+    return unsubscribe.unsubscribe_from_sender(conn, jxa, config, message_id, **kwargs)
 
 
 def reply_to_email(
