@@ -1,3 +1,15 @@
+<p align="center">
+  <img src="docs/assets/hero.svg" alt="cobos-apple-mail-mcp — a unified Apple Mail MCP server: fast on-disk reads and search, plus complete AppleScript writes, behind one safety layer" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://pypi.org/project/cobos-apple-mail-mcp/"><img src="https://img.shields.io/pypi/v/cobos-apple-mail-mcp?color=2d6cdf&label=PyPI" alt="PyPI"></a>
+  <img src="https://img.shields.io/badge/python-3.10%2B-2d6cdf" alt="Python 3.10+">
+  <img src="https://img.shields.io/badge/platform-macOS-8a8f98" alt="Platform: macOS">
+  <img src="https://img.shields.io/badge/MCP%20tools-31-34a853" alt="31 MCP tools">
+  <a href="https://github.com/ErnestoCobos/cobos-apple-mail-mcp/blob/main/LICENSE"><img src="https://img.shields.io/badge/license-GPL--3.0--or--later-f5b94a" alt="License: GPL-3.0-or-later"></a>
+</p>
+
 # cobos-apple-mail-mcp
 
 **A unified Apple Mail MCP server: fast on-disk reads and search, plus complete AppleScript
