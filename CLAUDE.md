@@ -48,7 +48,10 @@ identity (normalized RFC822 Message-ID, or an `amid:` opaque handle for drafts) 
    via `messages whose message id is X`, and **read the id back to verify** before any mutation. Zero
    matches → `NotFound`. More than one match on a **write** → return `MultipleMatches`; **never
    auto-pick** a message to mutate. `subject_keyword` is an explicit opt-in locator only, and even
-   then resolves to a Message-ID first.
+   then resolves to a Message-ID first. **`X` must be the bracket-stripped id** — verified against
+   real Mail, `message.messageId()` has *no* angle brackets, so a bracketed `whose` query matches
+   nothing and every scoped resolve silently falls through to the broad scan and times out
+   (`write/scripts/mail_core.js::matchByMessageId()` queries the stripped form first).
 2. **Safety layer.** No write tool calls `write/*` directly — everything passes through
    `core.safety.guard()`: `read_only` blocks all send/modify tools (draft creation stays allowed);
    batch caps (`move=1, status=10, trash=5, delete=1`) are rejected, never silently truncated;

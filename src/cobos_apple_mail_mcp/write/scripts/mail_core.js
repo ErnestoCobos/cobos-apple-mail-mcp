@@ -122,6 +122,27 @@ function describeMessage(msg, accountName, mailboxName) {
 // Message-ID (args.messageId, bracketed). Returns every candidate found in
 // scope so core/resolver.py can read-back-verify and detect ambiguity —
 // this function never picks a "best" match itself.
+// Match messages by RFC822 Message-ID. Verified against real Mail: JXA's
+// message.messageId() returns the id WITHOUT angle brackets, so a
+// whose({messageId:"<...>"}) query matches nothing. We query the
+// bracket-stripped form first (what real Mail stores) and fall back to the
+// original for robustness across Mail versions. Getting this wrong makes
+// every scoped resolve return zero and fall through to the unbounded broad
+// scan, which times out on large mailboxes — a real bug this fixes.
+function matchByMessageId(collection, rawId) {
+  var stripped = String(rawId).replace(/^<+/, "").replace(/>+$/, "");
+  var forms = stripped === rawId ? [stripped] : [stripped, rawId];
+  for (var i = 0; i < forms.length; i++) {
+    try {
+      var hits = collection.whose({ messageId: forms[i] })();
+      if (hits.length > 0) return hits;
+    } catch (e) {
+      /* try next form */
+    }
+  }
+  return [];
+}
+
 function resolveMessage(args) {
   var app = MailApp();
   var targetId = args.messageId;
@@ -145,12 +166,7 @@ function resolveMessage(args) {
 
     for (var m = 0; m < mailboxesToSearch.length; m++) {
       var mailbox = mailboxesToSearch[m];
-      var hits = [];
-      try {
-        hits = mailbox.messages.whose({ messageId: targetId })();
-      } catch (e) {
-        hits = [];
-      }
+      var hits = matchByMessageId(mailbox.messages, targetId);
       for (var h = 0; h < hits.length; h++) {
         candidates.push(describeMessage(hits[h], account.name(), mailbox.name()));
       }
@@ -168,7 +184,7 @@ function getMessageHandle(args) {
   if (!account) throw "account not found: " + args.accountHint;
   var mailbox = findMailbox(account, args.mailboxHint);
   if (!mailbox) throw "mailbox not found: " + args.mailboxHint;
-  var hits = mailbox.messages.whose({ messageId: args.messageId })();
+  var hits = matchByMessageId(mailbox.messages, args.messageId);
   if (hits.length === 0) throw "message not found on re-resolution (it may have moved)";
   return { app: app, account: account, mailbox: mailbox, message: hits[0] };
 }

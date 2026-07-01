@@ -16,8 +16,19 @@ silently act on the wrong message.
 `core/identity.py::normalize_message_id()` produces the canonical form of an RFC822 Message-ID:
 bracket-stripped, whitespace-trimmed, **case preserved** (RFC 5322 msg-id halves are
 case-sensitive tokens — never lowercased). Both bracketed (`<abc@x.com>`) and bare (`abc@x.com`)
-input are accepted; the canonical form is always bare. `to_mail_message_id()` re-adds the
-brackets only at the AppleScript boundary, since Mail stores `message id` *with* brackets.
+input are accepted; the canonical form is always bare.
+
+> **Brackets and the `whose message id` query (corrected after real-Mac testing).** An earlier
+> version re-added angle brackets at the AppleScript boundary, on the assumption that Mail's
+> `message id` includes them. **That was wrong** — verified live: JXA's `message.messageId()`
+> returns the id *without* brackets, so `messages whose message id is "<abc@x.com>"` matches
+> nothing, every *scoped* resolve returned zero, and each write fell through to the unbounded broad
+> scan that times out on a large account (~20s). The unit tests missed it because the mocked JXA
+> boundary stripped brackets in its handler. Fixed in `write/scripts/mail_core.js::
+> matchByMessageId()`, which queries the **bracket-stripped** form first (what real Mail stores)
+> and falls back to the original for cross-version robustness — used by both `resolveMessage` and
+> `getMessageHandle`. With this, a real `set_flag_color`/`move`/`status` on a 210k-message mailbox
+> resolves in ~2s instead of timing out.
 
 ### `amid:` opaque handles (drafts and other Message-ID-less mail)
 
