@@ -299,3 +299,27 @@ def test_set_flag_color_blocked_in_read_only():
             conn, jxa, cfg, ["m1@x.com"], "set_flag_color", color="green"
         )
     assert jxa.calls == []
+
+
+def test_prune_old_eml_bounds_the_outbox(tmp_path, monkeypatch):
+    # create_rich_email_draft writes a .eml and hands it to Mail; those must
+    # not pile up forever. _prune_old_eml deletes ones older than the cutoff.
+    import time as _time
+
+    from cobos_apple_mail_mcp.write import compose
+
+    monkeypatch.setattr(compose, "_EML_OUTBOX", tmp_path)
+    old = tmp_path / "old.eml"
+    fresh = tmp_path / "fresh.eml"
+    old.write_bytes(b"old")
+    fresh.write_bytes(b"fresh")
+    # Backdate the old one well past the cutoff.
+    stale = _time.time() - compose._EML_MAX_AGE_SEC - 10
+    import os as _os
+
+    _os.utime(old, (stale, stale))
+
+    compose._prune_old_eml()
+
+    assert not old.exists()  # pruned
+    assert fresh.exists()  # recent one kept (Mail may still be importing it)

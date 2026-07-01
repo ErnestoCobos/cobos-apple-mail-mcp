@@ -17,6 +17,7 @@ from __future__ import annotations
 import sqlite3
 import subprocess
 import tempfile
+import time
 from email.message import EmailMessage
 from pathlib import Path
 
@@ -28,6 +29,11 @@ from cobos_apple_mail_mcp.core.resolver import resolve
 from cobos_apple_mail_mcp.write.jxa_executor import JXAExecutor
 
 _EML_OUTBOX = Path.home() / ".cobos-apple-mail-mcp" / "outbox"
+# A .eml is only needed until Mail has imported it into a draft (a few seconds);
+# after that it's dead weight. We can't delete the one we just handed to Mail
+# without racing that import, so instead each call prunes .eml files older than
+# this — bounding the outbox instead of letting it grow forever.
+_EML_MAX_AGE_SEC = 3600
 
 
 def _require_writable(config: Config, operation: str) -> None:
@@ -74,8 +80,25 @@ def _build_eml(
     return msg
 
 
+def _prune_old_eml() -> None:
+    """Delete .eml files Mail has long since imported, so the outbox doesn't
+    grow without bound. Best-effort — never raises."""
+    cutoff = time.time() - _EML_MAX_AGE_SEC
+    try:
+        entries = list(_EML_OUTBOX.glob("*.eml"))
+    except OSError:
+        return
+    for old in entries:
+        try:
+            if old.stat().st_mtime < cutoff:
+                old.unlink()
+        except OSError:
+            continue
+
+
 def _open_eml_as_draft(msg: EmailMessage) -> Path:
     _EML_OUTBOX.mkdir(parents=True, exist_ok=True, mode=0o700)
+    _prune_old_eml()
     fd, raw_path = tempfile.mkstemp(suffix=".eml", dir=str(_EML_OUTBOX))
     path = Path(raw_path)
     with open(fd, "wb") as fh:
