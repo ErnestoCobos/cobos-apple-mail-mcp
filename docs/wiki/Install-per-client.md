@@ -32,9 +32,19 @@ If you only use **Claude Desktop** (and don't want the Claude Code CLI touched),
 variant — same safe config-merge, no `claude mcp add` step:
 
 ```bash
+# from a clone of the repo:
 bash scripts/install-claude-desktop.sh
-# raw URL: https://raw.githubusercontent.com/ErnestoCobos/cobos-apple-mail-mcp/main/scripts/install-claude-desktop.sh
+
+# straight from the web — macOS has curl built in (wget isn't installed by default).
+# Review it first, then run; process substitution keeps the prompts interactive:
+curl -fsSL https://raw.githubusercontent.com/ErnestoCobos/cobos-apple-mail-mcp/main/scripts/install-claude-desktop.sh -o install-claude-desktop.sh
+less install-claude-desktop.sh          # it edits your Claude config — read before running
+bash install-claude-desktop.sh
 ```
+
+Prefer that over `curl … | bash`: piping makes the script's stdin the download, not your
+terminal, so its yes/no prompts silently take their defaults. `bash <(curl -fsSL <url>)` avoids
+that (and leaves no file behind) if you don't need to review it first.
 
 Its options: `--read-only`, `--with-attachments`, `--name NAME`, `--no-index`, `--skip-install`
 (the CLI is already installed — just register), `-y`, `-h`. Run
