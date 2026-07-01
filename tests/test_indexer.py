@@ -125,6 +125,55 @@ def test_trigram_table_populated_when_enabled(tmp_path):
     assert count == 1
 
 
+def _accounts_db(dir_path, uuid, name):
+    dir_path.mkdir(parents=True, exist_ok=True)
+    path = dir_path / "Accounts4.sqlite"
+    conn = sqlite3.connect(path)
+    conn.execute(
+        "CREATE TABLE ZACCOUNT (Z_PK INTEGER PRIMARY KEY, ZIDENTIFIER VARCHAR, "
+        "ZACCOUNTDESCRIPTION VARCHAR, ZUSERNAME VARCHAR, ZPARENTACCOUNT INTEGER)"
+    )
+    conn.execute(
+        "INSERT INTO ZACCOUNT (Z_PK, ZIDENTIFIER, ZACCOUNTDESCRIPTION) VALUES (1, ?, ?)",
+        (uuid, name),
+    )
+    conn.commit()
+    conn.close()
+    return path
+
+
+def test_build_index_resolves_account_display_name(tmp_path):
+    uuid = "AAAAAAAA-1111-2222-3333-444444444444"
+    write_message(tmp_path, rowid=1, message_id="m1@example.com", account_uuid=uuid)
+    accounts_db = _accounts_db(tmp_path / "acct", uuid, "Work")
+
+    conn = _conn()
+    build_index(conn, tmp_path, full=True, accounts_db_path=accounts_db)
+
+    row = conn.execute("SELECT account_name FROM emails WHERE emlx_rowid = 1").fetchone()
+    assert row["account_name"] == "Work"
+
+
+def test_build_index_backfills_account_name_on_already_indexed_rows(tmp_path):
+    # account-name resolution must not require a reparse: an index built
+    # before Accounts4.sqlite was consulted (or before this feature existed)
+    # should pick up real names on the very next build via a cheap UPDATE,
+    # not require waiting for every message to individually change.
+    uuid = "AAAAAAAA-1111-2222-3333-444444444444"
+    write_message(tmp_path, rowid=1, message_id="m1@example.com", account_uuid=uuid)
+
+    conn = _conn()
+    build_index(conn, tmp_path, full=True, accounts_db_path=tmp_path / "nonexistent.sqlite")
+    row = conn.execute("SELECT account_name FROM emails WHERE emlx_rowid = 1").fetchone()
+    assert row["account_name"] == uuid  # no resolver data yet -> falls back to the UUID
+
+    accounts_db = _accounts_db(tmp_path / "acct", uuid, "Work")
+    build_index(conn, tmp_path, full=False, accounts_db_path=accounts_db)
+
+    row = conn.execute("SELECT account_name FROM emails WHERE emlx_rowid = 1").fetchone()
+    assert row["account_name"] == "Work"
+
+
 def test_build_index_survives_unsanitized_surrogate_row(tmp_path, monkeypatch):
     """Defense in depth: even if some future parse path slips a lone
     surrogate past emlx_parser's sanitization (see test_emlx_parser.py for

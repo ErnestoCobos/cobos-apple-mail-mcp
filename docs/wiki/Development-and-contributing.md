@@ -35,6 +35,11 @@ uv run ruff check src tests
   vectors, no ML) against a **real** `sqlite-vec` extension (`pytest.importorskip("sqlite_vec")`
   — skips gracefully if not installed; the `[dev]` extra includes it specifically so CI exercises
   this path rather than always skipping).
+- `tests/test_account_names.py` builds a synthetic, real-schema-shaped `Accounts4.sqlite` fixture
+  (same pattern as the `.emlx` fixtures — construct the real on-disk format, don't mock the
+  lookup) to test `read/account_names.py`'s `ZPARENTACCOUNT`-chain walk and cycle guard without
+  depending on whatever's actually configured on the machine running the suite;
+  `read/indexer.py::build_index()` takes an `accounts_db_path` override for the same reason.
 
 The only things this suite cannot verify without a real, fully-configured Mac: the actual
 `write/scripts/mail_core.js` JXA against a live Mail.app (compose/reply/forward/move/trash/
@@ -79,8 +84,21 @@ tests to run, not just skip): `ruff check`, `pytest`, and `scripts/check_docs_sy
 
 ```bash
 make pyz                              # builds dist/apple-mail-mcp{,-full}.pyz
+shasum -a 256 dist/*.pyz > dist/SHA256SUMS.txt
+git tag -a vX.Y.Z -m "vX.Y.Z" && git push origin vX.Y.Z
+gh release create vX.Y.Z dist/apple-mail-mcp.pyz dist/apple-mail-mcp-full.pyz dist/SHA256SUMS.txt \
+  --title "vX.Y.Z" --notes-file <path>
 scripts/publish_wiki.sh               # syncs docs/wiki/ -> the GitHub wiki repo
 ```
+
+The GitHub wiki repo (`*.wiki.git`) doesn't exist until its first page is created once through
+the web UI ("Create the first page") — there's no API/git way to bootstrap it (verified: both a
+fresh clone and a direct push to an unwritten wiki repo fail with "Repository not found"). Do
+this once per repo before the first `scripts/publish_wiki.sh` run.
+
+`scripts/build_pyz.sh` prefers this checkout's own `.venv` (see
+[Single-file packaging](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Single-file-packaging)) — run `make pyz` from a checkout with
+`uv sync --all-extras` already run, not from an ad-hoc shell with a different `python3` on `$PATH`.
 
 ## Conventions
 

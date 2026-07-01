@@ -78,7 +78,7 @@ identity (normalized RFC822 Message-ID, or an `amid:` opaque handle for drafts) 
 | Identity & resolution | `core/identity.py`, `core/resolver.py` | [Identity & resolution](docs/wiki/Identity-and-resolution.md) | #1 above |
 | Safety / confirm / undo | `core/safety.py`, `core/undo.py` | [Safety, confirmation & undo](docs/wiki/Safety-confirmation-and-undo.md) | #2, #3 |
 | Storage / schema | `storage/database.py`, `storage/migrations.py` | [Apple Mail on-disk format](docs/wiki/Apple-Mail-on-disk-format.md) | #6 |
-| Envelope/.emlx readers | `read/envelope_reader.py`, `read/emlx_parser.py` | [Apple Mail on-disk format](docs/wiki/Apple-Mail-on-disk-format.md) | #6 |
+| Envelope/.emlx readers | `read/envelope_reader.py`, `read/emlx_parser.py`, `read/account_names.py` | [Apple Mail on-disk format](docs/wiki/Apple-Mail-on-disk-format.md) | #6 |
 | Indexer & watch | `read/indexer.py`, `read/watcher.py` | [Indexing and watch](docs/wiki/Indexing-and-watch.md) | #4 |
 | Search (keyword/hybrid) | `read/search.py`, `read/vector_search.py` | [Search](docs/wiki/Search.md) | n/a |
 | Threading & knowledge | `read/threader.py`, `knowledge/*` | [Threading and knowledge](docs/wiki/Threading-and-knowledge.md) | n/a |

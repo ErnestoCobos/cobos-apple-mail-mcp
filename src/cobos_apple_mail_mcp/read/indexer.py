@@ -154,7 +154,9 @@ def _serialize_addresses(addrs: list) -> tuple[str, str]:  # noqa: ANN001
     return json.dumps(rendered), ", ".join(rendered)
 
 
-def _row_from_parsed(entry: ScanEntry, parsed: ParsedEmlx) -> dict:
+def _row_from_parsed(
+    entry: ScanEntry, parsed: ParsedEmlx, account_names: dict[str, str] | None = None
+) -> dict:
     to_json, to_flat = _serialize_addresses(parsed.to)
     cc_json, cc_flat = _serialize_addresses(parsed.cc)
     sender_name = parsed.sender.name if parsed.sender else None
@@ -165,13 +167,14 @@ def _row_from_parsed(entry: ScanEntry, parsed: ParsedEmlx) -> dict:
     canonical_id = parsed.message_id or make_opaque_handle(
         entry.account_uuid, entry.mailbox_path, entry.rowid, entry.mtime
     )
+    account_name = (account_names or {}).get(entry.account_uuid, entry.account_uuid)
     return {
         "emlx_rowid": entry.rowid,
         "emlx_path": str(entry.path),
         "emlx_mtime": entry.mtime,
         "emlx_size": entry.size,
         "account_uuid": entry.account_uuid,
-        "account_name": entry.account_uuid,
+        "account_name": account_name,
         "mailbox_url": entry.mailbox_path,
         "mailbox_name": entry.mailbox_name,
         "mailbox_role": classify_mailbox_role(entry.mailbox_name),
@@ -279,7 +282,11 @@ def _flush_batch(conn: sqlite3.Connection, batch: list[dict], recovered_paths: l
         return ok
 
 
-def _index_entries(conn: sqlite3.Connection, entries: list[ScanEntry]) -> tuple[int, int]:
+def _index_entries(
+    conn: sqlite3.Connection,
+    entries: list[ScanEntry],
+    account_names: dict[str, str] | None = None,
+) -> tuple[int, int]:
     """Parse + UPSERT entries in batches. Returns (succeeded, failed).
 
     A path that succeeds here is cleared from `failed_index_jobs` if it was
@@ -296,7 +303,7 @@ def _index_entries(conn: sqlite3.Connection, entries: list[ScanEntry]) -> tuple[
             parsed = parse_emlx_file(entry.path)
             if parsed is None:
                 continue
-            batch.append(_row_from_parsed(entry, parsed))
+            batch.append(_row_from_parsed(entry, parsed, account_names))
             recovered_paths.append(str(entry.path))
         except Exception as exc:  # noqa: BLE001 - one bad message must not abort the build
             _record_failure(conn, entry.path, exc)
@@ -367,6 +374,25 @@ def _rebuild_trigram_index(conn: sqlite3.Connection) -> None:
     conn.commit()
 
 
+def _backfill_account_names(conn: sqlite3.Connection, account_names: dict[str, str]) -> None:
+    """Update `account_name` for rows already indexed under an old (or
+    never-resolved) name -- account-name resolution depends only on
+    `account_uuid`, never on message content, so this is a cheap indexed
+    UPDATE per known account rather than a full reparse. Runs on every
+    build (not just `--full`) so a first `apple-mail-mcp index build`
+    against an existing index.db picks up real names without waiting for
+    every message to individually change.
+    """
+    if not account_names:
+        return
+    for uuid, name in account_names.items():
+        conn.execute(
+            "UPDATE emails SET account_name = ? WHERE account_uuid = ? AND account_name != ?",
+            (name, uuid, name),
+        )
+    conn.commit()
+
+
 def build_index(
     conn: sqlite3.Connection,
     mail_dir: Path,
@@ -374,20 +400,30 @@ def build_index(
     exclude_mailboxes: set[str] | None = None,
     full: bool = False,
     enable_trigram: bool = False,
+    accounts_db_path: Path | None = None,
 ) -> IndexBuildResult:
     """Run one indexing pass: diff the filesystem against `emails`, parse
     only what changed, and apply deletes/moves. Crash-safe: each batch
     commits independently, and a crashed build simply resumes from where
     the (mtime, size)-gated diff says work remains.
+
+    `accounts_db_path` overrides where account display names are resolved
+    from (default: the real `~/Library/Accounts/Accounts4.sqlite`) -- tests
+    pass a synthetic fixture here to stay hermetic rather than depending on
+    whatever's on the machine running them; production callers never need it.
     """
+    from cobos_apple_mail_mcp.read.account_names import resolve_account_names
+
     start = time.monotonic()
     diff = inventory_diff(conn, mail_dir, exclude_mailboxes)
+    account_names = resolve_account_names(accounts_db_path)
+    _backfill_account_names(conn, account_names)
 
     if full:
         _drop_fts_triggers(conn)
 
-    added_ok, added_failed = _index_entries(conn, diff.added)
-    changed_ok, changed_failed = _index_entries(conn, diff.changed)
+    added_ok, added_failed = _index_entries(conn, diff.added, account_names)
+    changed_ok, changed_failed = _index_entries(conn, diff.changed, account_names)
 
     if diff.deleted:
         conn.executemany("DELETE FROM emails WHERE emlx_path = ?", [(p,) for p in diff.deleted])

@@ -33,9 +33,14 @@ Implemented in `read/indexer.py::inventory_diff()`. A move only updates `emlx_pa
 `build_index(conn, mail_dir, full=False, enable_trigram=False)`:
 
 1. `inventory_diff()`.
-2. If `full`: drop the FTS5 triggers (so per-row inserts during the bulk parse don't also fire
+2. Resolve account display names (`read/account_names.py::resolve_account_names()`, see
+   [Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format#account-display-names))
+   and backfill any already-indexed row whose `account_name` doesn't match yet
+   (`_backfill_account_names()`) — a cheap indexed `UPDATE`, not a reparse, so it runs on every
+   build, not just `--full`.
+3. If `full`: drop the FTS5 triggers (so per-row inserts during the bulk parse don't also fire
    small FTS writes — batched at the end instead).
-3. Parse + UPSERT `added`/`changed` entries in batches of 500
+4. Parse + UPSERT `added`/`changed` entries in batches of 500
    (`read/indexer.py::_index_entries()`); each batch commits independently, so a crashed build
    resumes cleanly — the `(mtime, size)`-gated diff just re-discovers whatever wasn't committed
    yet. A path that fails to parse is recorded in `failed_index_jobs` (dead-letter) **and a path
@@ -49,13 +54,13 @@ Implemented in `read/indexer.py::inventory_diff()`. A move only updates `emlx_pa
    500-row batch. Found running a full build against a real 209k-message, multi-account mailbox
    for the first time, which is exactly the scale where years of varied, occasionally malformed
    mail actually shows up; synthetic fixtures never hit this.
-4. Apply `deleted`/`moved`.
-5. If `full`: rebuild `emails_fts` (delete + `INSERT...SELECT`, **not** the bare `'rebuild'`
+5. Apply `deleted`/`moved`.
+6. If `full`: rebuild `emails_fts` (delete + `INSERT...SELECT`, **not** the bare `'rebuild'`
    command — see [Search](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Search) for why), recreate the triggers, optimize, and rebuild the
    trigram table if `enable_trigram`.
-6. If anything changed: recompute JWZ threading for the whole index (`read/threader.py::
+7. If anything changed: recompute JWZ threading for the whole index (`read/threader.py::
    index_threads()` — cheap enough at personal-mailbox scale to just rerun, see that page).
-7. Record `sync_state` (`last_build`/`last_full_build`, `mail_dir`, `envelope_mtime`).
+8. Record `sync_state` (`last_build`/`last_full_build`, `mail_dir`, `envelope_mtime`).
 
 ## `--watch`
 

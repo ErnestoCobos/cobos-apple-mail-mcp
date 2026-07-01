@@ -109,3 +109,34 @@ Three distinct identifiers exist for the same message:
 This project's canonical id (exposed to every MCP tool) is the **normalized RFC822 Message-ID** —
 see [Identity & resolution](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Identity-and-resolution) for the full design, including the
 `amid:` opaque-handle fallback for drafts that don't have one yet.
+
+## Account display names
+
+The account UUID directory name has no human-readable counterpart anywhere in Apple Mail's own
+on-disk data (no `accounts` table in the Envelope Index, `mailboxes.url` embeds only the UUID).
+The real mapping lives in macOS's separate, system-wide Internet Accounts store,
+`~/Library/Accounts/Accounts4.sqlite` — not Mail-specific (also backs Calendar/Contacts/Messages),
+opened with the same `immutable=1` read-only discipline as the Envelope Index.
+
+`read/account_names.py::resolve_account_names()`: `ZACCOUNT.ZIDENTIFIER` matches Mail's UUID
+directory name directly, but **verified against a real 7-account mailbox, 4 of the 7 real
+accounts had an empty `ZACCOUNTDESCRIPTION`/`ZUSERNAME` on their own row** — these are the
+Gmail/Exchange-style accounts added via System Settings rather than directly in Mail. Their real
+display name/email lives on a `ZPARENTACCOUNT` ancestor row instead; the resolver walks that
+chain (bounded to 5 hops, with a cycle guard against malformed/circular data) until it finds a
+row with a non-empty description or username. `read/indexer.py::build_index()` resolves this map
+once per build and:
+
+1. Threads it into `_row_from_parsed()` so newly-indexed rows get the real name immediately.
+2. Runs a cheap indexed `UPDATE emails SET account_name = ... WHERE account_uuid = ...` per known
+   account (`_backfill_account_names()`) on *every* build, not just `--full` — account-name
+   resolution depends only on `account_uuid`, never message content, so already-indexed rows pick
+   up the real name on the next build without a full reparse.
+
+Falls back to the raw UUID on any missing file, schema mismatch, or permission error — this is a
+best-effort supplementary lookup, never a hard requirement, matching
+`envelope_reader.py::read_envelope_flags()`'s defensive style. Verified end-to-end: all 7 real
+accounts on the verification mailbox resolved to their correct real names ("Account-A",
+"Account-B", "Account-C", "On My Mac", "Account-D", "Account-F", "Account-E"), including one account
+whose real `ZACCOUNTDESCRIPTION` had a stray leading space in the actual system data — stripped
+before use.

@@ -32,8 +32,9 @@ still a synthetic-only or extrapolated number.
   partway through before that fix.
 - `get_inbox_overview`, `get_needs_response`, `get_email_thread`: all sub-second, computed
   entirely from the local index with zero Mail.app/AppleScript involvement.
-- `list_accounts`/`account` fields on every read tool: currently the raw account UUID, not a
-  human display name — see [Tools reference](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Tools-reference) for why and what would fix it.
+- `list_accounts`/`account` fields on every read tool: resolved to real human display names
+  ("Account-A", "Account-F", etc.) via `read/account_names.py`, verified against all 7 real
+  accounts on this mailbox — see [Apple Mail on-disk format](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Apple-Mail-on-disk-format#account-display-names).
 
 ### Measured (synthetic fixtures, low message counts)
 
