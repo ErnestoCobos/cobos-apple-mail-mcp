@@ -11,7 +11,7 @@ from cobos_apple_mail_mcp.core.errors import (
 )
 from cobos_apple_mail_mcp.core.undo import undo_last
 from cobos_apple_mail_mcp.storage.database import connect_index
-from cobos_apple_mail_mcp.write import organize
+from cobos_apple_mail_mcp.write import compose, organize
 from tests.helpers import FakeJXAExecutor
 
 
@@ -198,6 +198,21 @@ def test_undo_last_nothing_to_undo_raises():
     jxa = FakeJXAExecutor()
     with pytest.raises(UndoFailed):
         undo_last(conn, jxa)
+
+
+def test_compose_email_passes_account_to_jxa():
+    # Regression: compose_email used to drop the account, so the JXA layer
+    # couldn't send from the requested account and fell back to the default
+    # one (found only by sending a real email against real Mail).
+    conn = _conn()
+    jxa = FakeJXAExecutor()
+    jxa.on("composeEmail", lambda args: {"status": "sent", "_args": args})
+    compose.compose_email(
+        conn, jxa, _cfg(), account="Work", to="x@example.com", subject="hi", body="b", mode="send"
+    )
+    call_args = next(args for name, args in jxa.calls if name == "composeEmail")
+    assert call_args["account"] == "Work"
+    assert call_args["subject"] == "hi"
 
 
 def _seed_one_message(conn):

@@ -118,6 +118,7 @@ def compose_email(
     result = jxa.call(
         "composeEmail",
         {
+            "account": account,
             "to": _split_addrs(to),
             "cc": _split_addrs(cc),
             "bcc": _split_addrs(bcc),

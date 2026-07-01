@@ -62,8 +62,16 @@ for what was verified by compiling vs. what needs manual verification).
    `needs-response`.
 3. **Non-destructive first**: `apple-mail-mcp move <id> --to-mailbox Archive --dry-run`,
    `apple-mail-mcp trash --action delete_permanent ... ` (defaults to `dry_run=true`).
-4. `apple-mail-mcp compose --account ... --to ... --subject test --body test --mode draft`.
-5. A single real `move`, then `apple-mail-mcp undo-last` to confirm the round-trip.
+4. `apple-mail-mcp compose --account ... --to <yourself> --subject test --body test --attachment
+   <file> --mode send`, then confirm it arrives **from the account you named** (not the default
+   one) **with the attachment**. This exact step is what surfaced four real JXA bugs the mocked
+   unit tests couldn't — `.make()` on recipients/attachments failing (-10024), `make(withProperties)`
+   silently dropping the subject (→ Mail's "no subject" dialog blocking the send), the account
+   argument being ignored, and the sent `OutgoingMessage` lingering in `outgoingMessages()`. Do
+   this on real Mail before trusting compose/reply/forward.
+5. A single real `move`, then `apple-mail-mcp undo-last` to confirm the round-trip. Also
+   `set_flag_color` + `undo-last` (the resolver must find the message by its bracket-stripped
+   Message-ID — a bracketed query silently times out on a large mailbox).
 6. `update_email_status` flag/unflag.
 7. Confirm `--read-only` blocks every write tool (should fail in milliseconds, never launching
    Mail.app — see [Performance & benchmarks](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Performance-and-benchmarks) for why this is

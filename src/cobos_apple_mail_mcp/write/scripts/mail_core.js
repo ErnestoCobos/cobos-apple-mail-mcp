@@ -5,12 +5,21 @@
 // Apple Event / JXA method call against Application("Mail") — never
 // simulated keystrokes or NSPasteboard injection (CLAUDE.md invariant #5).
 //
-// CORRECTNESS NOTE: this file was authored against the documented JXA Mail
-// scripting dictionary and standard JXA Mail-automation patterns, but has
-// not been exercised against a live Mail.app in this build environment.
-// Before relying on the write tools, run the manual verification steps in
-// the project Wiki (Development & contributing) on a real Mac: dry-run
-// previews first, then a single non-destructive move + undo_last.
+// CORRECTNESS NOTE: verified against a live Mail.app. Real testing corrected
+// several assumptions the documented dictionary alone got wrong:
+//   - `messages whose message id is X` needs the id WITHOUT angle brackets
+//     (see matchByMessageId).
+//   - `ToRecipient`/`CcRecipient`/`BccRecipient`/`Attachment` and rule
+//     conditions CANNOT be `.make()`'d standalone (error -10024); construct
+//     and push them directly (addRecipients/addAttachments).
+//   - An OutgoingMessage's subject/content must be set by ASSIGNMENT, not via
+//     make({withProperties}) (which silently drops them, then Mail blocks the
+//     send on a "no subject" dialog).
+//   - Compose sends from the message's `sender` address; set it from the
+//     requested account or the send goes out from Mail's default account.
+// Known residual quirk: sent OutgoingMessages linger in app.outgoingMessages()
+// and app.delete() won't clear them — the send/delivery still succeeds; the
+// phantoms clear on a Mail relaunch.
 
 function MailApp() {
   return Application("Mail");
@@ -361,14 +370,19 @@ function createMailbox(args) {
   return { created: true, name: created.name() };
 }
 
+// Recipients and attachments are constructed and PUSHED directly — never
+// `.make()`'d. Verified live against a real Mail.app: `ToRecipient(...).make()`
+// (and `Attachment(...).make()`) raise "-10024 Can't make or move that element
+// into that container", exactly like rule conditions; the correct idiom is to
+// push the constructed element onto the collection.
 function addRecipients(outgoing, list, kind) {
   if (!list) return;
   var app = MailApp();
   for (var i = 0; i < list.length; i++) {
     var addr = list[i];
-    if (kind === "to") outgoing.toRecipients.push(app.ToRecipient({ address: addr }).make());
-    else if (kind === "cc") outgoing.ccRecipients.push(app.CcRecipient({ address: addr }).make());
-    else if (kind === "bcc") outgoing.bccRecipients.push(app.BccRecipient({ address: addr }).make());
+    if (kind === "to") outgoing.toRecipients.push(app.ToRecipient({ address: addr }));
+    else if (kind === "cc") outgoing.ccRecipients.push(app.CcRecipient({ address: addr }));
+    else if (kind === "bcc") outgoing.bccRecipients.push(app.BccRecipient({ address: addr }));
   }
 }
 
@@ -377,7 +391,7 @@ function addAttachments(outgoing, paths) {
   var app = MailApp();
   for (var i = 0; i < paths.length; i++) {
     try {
-      outgoing.content.attachments.push(app.Attachment({ fileName: paths[i] }).make());
+      outgoing.content.attachments.push(app.Attachment({ fileName: paths[i] }));
     } catch (e) {
       // Fail loud: silently dropping an attachment the caller asked for
       // would mean we appear to succeed while sending something different
@@ -385,28 +399,55 @@ function addAttachments(outgoing, paths) {
       throw "failed to attach file " + paths[i] + ": " + e;
     }
   }
+  // Mail loads the attachment file asynchronously; give it a moment to finish
+  // before the message is sent/saved, or the send can race the attach.
+  try { delay(1); } catch (e) { /* delay() unavailable in some contexts */ }
 }
 
 function finalizeOutgoing(outgoing, mode) {
-  outgoing.visible = true;
   if (mode === "send") {
+    // Keep the compose window hidden for a programmatic send. The subject is
+    // set by the caller, so Mail won't pop its "no subject" confirmation
+    // dialog (which would block the send indefinitely).
+    outgoing.visible = false;
     outgoing.send();
     return "sent";
   }
-  // "draft" and "open" both leave a compose window open — Mail's scripting
-  // dictionary has no "save silently to Drafts without a window" action.
+  // "draft" and "open" both leave a compose window open for review — Mail's
+  // scripting dictionary has no "save silently to Drafts without a window".
+  outgoing.visible = true;
   return "draft";
+}
+
+// Resolve the address to send from: an explicit fromAddress wins; otherwise the
+// requested account's own first address. Mail picks the sending account by the
+// sender address, so without this a compose silently goes out from the default
+// account regardless of the `account` argument (verified live: an account arg
+// of "Account-A" still sent From an iCloud address).
+function _senderFor(app, args) {
+  if (args.fromAddress) return args.fromAddress;
+  if (args.account) {
+    var acc = findAccount(app, args.account);
+    if (acc) {
+      var addrs = accountEmailAddresses(acc);
+      if (addrs.length) return addrs[0];
+    }
+  }
+  return null;
 }
 
 function composeEmail(args) {
   var app = MailApp();
-  var outgoing = app.OutgoingMessage().make({
-    withProperties: { subject: args.subject || "", content: args.body || "" }
-  });
-  if (args.fromAddress) {
-    try {
-      outgoing.sender = args.fromAddress;
-    } catch (e) {}
+  var outgoing = app.OutgoingMessage().make();
+  outgoing.visible = false;
+  // Set subject/content by ASSIGNMENT — the withProperties form on .make()
+  // does NOT apply them (verified live: the subject came out empty and Mail
+  // then blocked the send on a "no subject" dialog).
+  outgoing.subject = args.subject || "";
+  outgoing.content = args.body || "";
+  var senderAddr = _senderFor(app, args);
+  if (senderAddr) {
+    try { outgoing.sender = senderAddr; } catch (e) {}
   }
   addRecipients(outgoing, args.to, "to");
   addRecipients(outgoing, args.cc, "cc");
@@ -457,14 +498,21 @@ function manageDrafts(args) {
   }
 
   if (args.action === "create") {
-    var outgoing = app.OutgoingMessage().make({
-      withProperties: { subject: args.subject || "", content: args.body || "" }
-    });
+    var outgoing = app.OutgoingMessage().make();
+    outgoing.visible = false;
+    // Assignment, not withProperties (see composeEmail) — else subject/content
+    // come out empty.
+    outgoing.subject = args.subject || "";
+    outgoing.content = args.body || "";
+    var senderAddr = _senderFor(app, args);
+    if (senderAddr) {
+      try { outgoing.sender = senderAddr; } catch (e) {}
+    }
     addRecipients(outgoing, args.to, "to");
     addRecipients(outgoing, args.cc, "cc");
     addRecipients(outgoing, args.bcc, "bcc");
     addAttachments(outgoing, args.attachments);
-    outgoing.visible = true;
+    outgoing.visible = true;  // show the draft window for review
     return { created: true };
   }
 
