@@ -1,16 +1,39 @@
 ---
 covers: []
-last_verified: 2026-06-30
+last_verified: 2026-07-01
 ---
 
 # cobos-apple-mail-mcp Wiki
 
 Unified Apple Mail MCP server — fast on-disk reads/search plus complete AppleScript writes,
-behind one safety layer. Author: Ernesto Cobos. License: GPL-3.0-or-later.
+behind one safety layer. **31 MCP tools.** Author: Ernesto Cobos. License: GPL-3.0-or-later.
 
 This Wiki is the deep documentation; the [README](https://github.com/ErnestoCobos/cobos-apple-mail-mcp#readme)
 is the quickstart and pitch. [CLAUDE.md](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/blob/main/CLAUDE.md)
 is the fast-routing index for anyone (human or agent) working on the code itself.
+
+## Install
+
+```bash
+uvx cobos-apple-mail-mcp serve            # zero-install run (canonical MCP path)
+# or:  pipx install cobos-apple-mail-mcp  (add [attachments] for PDF/DOCX text search)
+apple-mail-mcp init && apple-mail-mcp index build
+```
+
+Then register `apple-mail-mcp serve` with your client — see
+[Install per client](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Install-per-client).
+The install-to-first-run flow and the required macOS permissions (Full Disk Access + Automation)
+are on [Permissions and troubleshooting](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Permissions-and-troubleshooting).
+
+```mermaid
+flowchart LR
+    A["1 · Install<br/>uvx / pipx / .pyz"] --> B["2 · Permissions<br/>Full Disk Access + Automation"]
+    B --> C["3 · init + index build"]
+    C --> D["4 · Register with<br/>your MCP client"]
+    D --> E["5 · Ask your agent<br/>about your inbox"]
+    classDef done fill:#3f9142,stroke:#245127,color:#fff
+    class A,B,C,D,E done
+```
 
 ```mermaid
 flowchart TB
