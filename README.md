@@ -327,14 +327,25 @@ for how to build this yourself (`make pyz`) and the `apple-mail-mcp-full.pyz` va
 
 ### Register with your MCP client
 
+> **One command for Claude Desktop / Cowork:** [`scripts/install.sh`](scripts/install.sh)
+> installs the CLI, writes the config, offers to build the index, and registers the server for
+> you — backing up `claude_desktop_config.json` and merging in only the one entry, so your other
+> MCP servers are untouched:
+> ```bash
+> bash scripts/install.sh              # add --read-only, --with-attachments, --help
+> ```
+> Everything below is the manual path.
+
 Test first with the official inspector:
 
 ```bash
 npx @modelcontextprotocol/inspector apple-mail-mcp serve
 ```
 
-**Claude Desktop** — edit (Settings → Developer → Edit Config, or directly)
-`~/Library/Application Support/Claude/claude_desktop_config.json`:
+**Claude Desktop & Cowork** — the desktop app (and its Cowork workspace) load local servers from
+one file. Edit it (Settings → Developer → Edit Config, or directly)
+`~/Library/Application Support/Claude/claude_desktop_config.json`, adding `apple-mail` next to any
+servers you already have:
 
 ```json
 {
@@ -347,11 +358,13 @@ npx @modelcontextprotocol/inspector apple-mail-mcp serve
 }
 ```
 
-Restart Claude Desktop after editing. (Single-file variant: `"command": "python3.12", "args":
-["/absolute/path/apple-mail-mcp.pyz", "serve"]` — use the Python minor version that built the
-`.pyz`, not just any `python3`; see [Single-file packaging](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Single-file-packaging).)
+Restart Claude Desktop completely (Cmd-Q, then reopen) after editing — the same app serves Cowork,
+so it's registered there too. If the app can't find `apple-mail-mcp`, use the absolute path from
+`which apple-mail-mcp`, and grant **Claude Desktop itself** Full Disk Access. (Single-file variant:
+`"command": "python3.12", "args": ["/absolute/path/apple-mail-mcp.pyz", "serve"]` — use the Python
+minor version that built the `.pyz`, not just any `python3`; see [Single-file packaging](https://github.com/ErnestoCobos/cobos-apple-mail-mcp/wiki/Single-file-packaging).)
 
-**Claude Code / Cowork**
+**Claude Code (CLI)** — also drives Cowork automations:
 
 ```bash
 claude mcp add apple-mail -- apple-mail-mcp serve

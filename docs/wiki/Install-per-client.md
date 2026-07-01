@@ -1,11 +1,43 @@
 ---
-covers: []
-last_verified: 2026-06-30
+covers:
+  - scripts/install.sh
+last_verified: 2026-07-01
 ---
 
 # Install per client
 
-Test the server in isolation first, with the official MCP Inspector:
+## Automated install (macOS)
+
+The fastest path: `scripts/install.sh` installs the CLI (via `uv`, `pipx`, or `pip` — whichever
+you have), writes the config, offers to build the index, and registers the server with **Claude
+Desktop / Cowork** for you.
+
+```bash
+# from a clone of the repo:
+bash scripts/install.sh
+
+# or without cloning (review it first — it edits your Claude config):
+curl -fsSL https://raw.githubusercontent.com/ErnestoCobos/cobos-apple-mail-mcp/main/scripts/install.sh -o install.sh
+less install.sh          # read before running anything that edits your config
+bash install.sh
+```
+
+Options: `--read-only` (register with `serve --read-only`), `--with-attachments` (PDF/DOCX text
+search), `--name NAME` (server key, default `apple-mail`), `--no-index`, `--no-client`, `-y`
+(non-interactive). `bash scripts/install.sh --help` lists them all.
+
+What it does to your Claude config is deliberately conservative: it registers the server by its
+**absolute path** (GUI apps don't inherit your shell's `PATH`), **backs up**
+`claude_desktop_config.json` before writing, **merges** only the one `apple-mail` entry so every
+other MCP server you have is preserved, and **refuses to write** — rather than clobber — if the
+existing file isn't valid JSON. It never sends, moves, or deletes mail. After it finishes, quit
+Claude Desktop completely (Cmd-Q) and reopen it.
+
+The rest of this page is the manual per-client setup, if you'd rather wire it up yourself.
+
+## Test in isolation first (MCP Inspector)
+
+Before wiring up a client:
 
 ```bash
 npx @modelcontextprotocol/inspector apple-mail-mcp serve
@@ -22,10 +54,13 @@ actually built the `.pyz` — see [Single-file packaging](https://github.com/Ern
 generic `python3` can fail with a confusing `ModuleNotFoundError`). **Absolute paths are
 required**, since the client launches the process from its own working directory, not yours.
 
-## Claude Desktop
+## Claude Desktop & Cowork
 
-Config file: `~/Library/Application Support/Claude/claude_desktop_config.json` (Settings →
-Developer → Edit Config opens it in your default editor; creates the file if missing).
+The Claude desktop app — including its **Cowork** agentic workspace — reads local (stdio) MCP
+servers from one file:
+
+`~/Library/Application Support/Claude/claude_desktop_config.json` (Settings → Developer → Edit
+Config opens it in your default editor; creates the file if missing).
 
 ```json
 {
@@ -38,10 +73,23 @@ Developer → Edit Config opens it in your default editor; creates the file if m
 }
 ```
 
-Stdio transport only; no CLI to register — edit the JSON directly. **Restart Claude Desktop
-completely** after editing (not just close the window) for changes to take effect.
+Add `apple-mail` alongside any servers you already have — don't replace the whole `mcpServers`
+object. Stdio transport only; there's no in-app CLI to register, so edit the JSON directly (or let
+[`scripts/install.sh`](#automated-install-macos) merge it in safely). **Restart Claude Desktop
+completely** (Cmd-Q, then reopen — not just close the window) for changes to take effect; the same
+running app serves Cowork, so once it's registered here Cowork sees it too.
 
-## Claude Code / Cowork
+If `apple-mail-mcp` isn't on the app's `PATH` (common for GUI apps — see the gotchas below), use
+the absolute path from `which apple-mail-mcp`, e.g. `"command":
+"/Users/you/.local/bin/apple-mail-mcp"`. The installer script does this automatically.
+
+Grant **Claude Desktop itself** Full Disk Access (System Settings → Privacy & Security → Full Disk
+Access) — when the app launches the server it runs under the app's identity, so a grant to your
+terminal alone isn't enough once it's driven from Claude.
+
+## Claude Code (CLI)
+
+The `claude` CLI (which also drives Cowork automations) registers servers from the command line:
 
 ```bash
 claude mcp add apple-mail -- apple-mail-mcp serve
